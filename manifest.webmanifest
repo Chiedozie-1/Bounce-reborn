@@ -2,7 +2,7 @@
   "id": "/bounce-reborn",
   "name": "Bounce Reborn",
   "short_name": "Bounce",
-  "description": "Roll, bounce and spring through six changing worlds.",
+  "description": "Roll, bounce and spring through 30 changing worlds.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -89,6 +89,7 @@
       f: "#3aa0ff",
       g: 1800,
       a: "cloud",
+      scene: "meadow",
       tip: "A gentle start.",
     },
     {
@@ -103,6 +104,7 @@
       g: 1800,
       wind: 1,
       a: "dust",
+      scene: "redland",
       tip: "Desert winds push you around.",
     },
     {
@@ -117,6 +119,7 @@
       g: 1800,
       ice: 1,
       a: "snow",
+      scene: "moon",
       tip: "The ice is slippery!",
     },
     {
@@ -131,6 +134,7 @@
       g: 1800,
       dark: 1,
       a: "spark",
+      scene: "dungeon",
       tip: "It is dark. Follow the glow.",
     },
     {
@@ -145,6 +149,7 @@
       g: 1800,
       lava: 1,
       a: "ember",
+      scene: "redland",
       tip: "Do not touch the lava.",
     },
     {
@@ -158,11 +163,317 @@
       f: "#9fd0ff",
       g: 1050,
       a: "cloud",
+      scene: "cloud",
       tip: "Low gravity. Float!",
     },
   ];
+  var MAX_LEVEL = 30;
+  function makeTheme(n, s, h, colors, en, scene, block, a, tip, flags) {
+    var t = {
+      n: n,
+      s: s,
+      h: h,
+      gt: colors[0],
+      gd: colors[1],
+      pl: colors[2],
+      f: colors[3],
+      en: en,
+      g: 1800,
+      scene: scene,
+      block: block,
+      a: a,
+      tip: tip,
+    };
+    if (flags)
+      Object.keys(flags).forEach(function (key) {
+        t[key] = flags[key];
+      });
+    return t;
+  }
+  TH = TH.concat([
+    makeTheme(
+      "Wildwood Canopy",
+      ["#87c9ee", "#d9f3d7"],
+      ["#78ad72", "#39684a"],
+      ["#69a95b", "#654c32", "#a9c978", "#4b8a64"],
+      "#ff8b67",
+      "forest",
+      "wood",
+      "firefly",
+      "Vines and roots crowd the path.",
+    ),
+    makeTheme(
+      "Sunken Keep",
+      ["#123441", "#286b72"],
+      ["#31565a", "#172e39"],
+      ["#47716a", "#263642", "#668b7d", "#153944"],
+      "#e8906e",
+      "dungeon",
+      "stone",
+      "spark",
+      "Mind the gaps between old stones.",
+      { dark: 1 },
+    ),
+    makeTheme(
+      "Scarlet Ridge",
+      ["#ee9879", "#f7d1a3"],
+      ["#c96955", "#744449"],
+      ["#b94b3e", "#59342f", "#d07853", "#542f4c"],
+      "#f5d166",
+      "redland",
+      "stone",
+      "ember",
+      "The brittle ridge narrows ahead.",
+    ),
+    makeTheme(
+      "Verdant Depths",
+      ["#285f69", "#a4c99c"],
+      ["#376b54", "#183c37"],
+      ["#3d7950", "#3b3028", "#72a667", "#173d48"],
+      "#d98fff",
+      "forest",
+      "wood",
+      "firefly",
+      "Stay alert beneath the canopy.",
+      { dark: 1 },
+    ),
+    makeTheme(
+      "Azure Ruins",
+      ["#3c9ac4", "#b9dbe0"],
+      ["#578b91", "#31515e"],
+      ["#477d78", "#41454a", "#8ba69a", "#306176"],
+      "#ffcb68",
+      "city",
+      "ruin",
+      "bird",
+      "Broken towers hide narrow landings.",
+    ),
+    makeTheme(
+      "Golden Borough",
+      ["#e6a76c", "#f6dfaa"],
+      ["#c9a16d", "#79604b"],
+      ["#a97b52", "#59463a", "#c79a62", "#916044"],
+      "#64c6b7",
+      "ruins",
+      "ruin",
+      "dust",
+      "Old rooftops crumble underfoot.",
+    ),
+    makeTheme(
+      "Moonlit Glacier",
+      ["#061738", "#367ba8"],
+      ["#16345d", "#0b1c38"],
+      ["#527f9d", "#24344a", "#9ac8de", "#0a344f"],
+      "#8de8ff",
+      "moon",
+      "ice",
+      "snow",
+      "Keep your footing beneath the moon.",
+      { ice: 1 },
+    ),
+    makeTheme(
+      "Whispering Woods",
+      ["#4c956c", "#c5e1a5"],
+      ["#477b4c", "#254a35"],
+      ["#447849", "#503724", "#ad7941", "#244937"],
+      "#ee9a71",
+      "forest",
+      "wood",
+      "firefly",
+      "Wooden planks span the forest gaps.",
+    ),
+    makeTheme(
+      "Hollow Bastion",
+      ["#172c47", "#607886"],
+      ["#40515e", "#202a36"],
+      ["#59656a", "#32343b", "#858477", "#273d52"],
+      "#d682c1",
+      "dungeon",
+      "stone",
+      "spark",
+      "The old bastion is full of traps.",
+      { dark: 1 },
+    ),
+    makeTheme(
+      "Crimson Expanse",
+      ["#8b3342", "#e59671"],
+      ["#b94f45", "#593040"],
+      ["#a7473d", "#493139", "#d07855", "#582d3c"],
+      "#ffda69",
+      "redland",
+      "stone",
+      "ember",
+      "Long jumps cross the scorched earth.",
+      { lava: 1 },
+    ),
+    makeTheme(
+      "Firefly Grove",
+      ["#123a43", "#47856c"],
+      ["#27634b", "#123a37"],
+      ["#326d4a", "#40352a", "#739353", "#144850"],
+      "#f3a268",
+      "forest",
+      "wood",
+      "firefly",
+      "Follow the lights through the dark.",
+      { dark: 1 },
+    ),
+    makeTheme(
+      "Drowned Skyline",
+      ["#326b88", "#9cc6c6"],
+      ["#526f75", "#263e51"],
+      ["#456b69", "#39434a", "#84938a", "#24465a"],
+      "#ffb76a",
+      "city",
+      "ruin",
+      "rain",
+      "The flooded streets are far below.",
+    ),
+    makeTheme(
+      "Sunlit Citadel",
+      ["#77b9d1", "#f8dfa3"],
+      ["#a9b77d", "#6a5942"],
+      ["#829457", "#65513b", "#c5a36a", "#578296"],
+      "#d66c4e",
+      "ruins",
+      "ruin",
+      "bird",
+      "Leap between the broken towers.",
+    ),
+    makeTheme(
+      "Dustfall Town",
+      ["#c87555", "#f2c084"],
+      ["#a77b5d", "#5c4540"],
+      ["#89634b", "#483936", "#bb8659", "#764536"],
+      "#f4d367",
+      "ruins",
+      "ruin",
+      "dust",
+      "Loose bricks and shifting sands.",
+      { wind: 1 },
+    ),
+    makeTheme(
+      "Ashen Catacombs",
+      ["#251b30", "#604455"],
+      ["#50404a", "#29252d"],
+      ["#625052", "#322c31", "#8e7770", "#352a3e"],
+      "#ff965e",
+      "dungeon",
+      "stone",
+      "ember",
+      "Ash dims the path through the halls.",
+      { dark: 1 },
+    ),
+    makeTheme(
+      "Stormwatch Peaks",
+      ["#334e79", "#a8bac2"],
+      ["#647c88", "#303d50"],
+      ["#6e8689", "#424449", "#a1aaa0", "#3a526a"],
+      "#ffcf74",
+      "moon",
+      "ice",
+      "rain",
+      "Cross the peaks as the storm builds.",
+      { wind: 1 },
+    ),
+    makeTheme(
+      "Frostfall Ruins",
+      ["#547b9e", "#d3e8ec"],
+      ["#8eaab0", "#485663"],
+      ["#9ab6b8", "#4b5155", "#c6d9d4", "#526d83"],
+      "#7bdaee",
+      "ruins",
+      "ice",
+      "snow",
+      "Ice coats every broken stone.",
+      { ice: 1 },
+    ),
+    makeTheme(
+      "Cinderworks",
+      ["#321820", "#a94835"],
+      ["#7d463b", "#3a2828"],
+      ["#87483a", "#38282a", "#bd7250", "#4d2931"],
+      "#ffd35c",
+      "redland",
+      "stone",
+      "ember",
+      "Hot vents make every landing risky.",
+      { lava: 1 },
+    ),
+    makeTheme(
+      "Thornwood",
+      ["#315349", "#9ab57a"],
+      ["#486348", "#293b32"],
+      ["#486448", "#46352a", "#987247", "#273d3e"],
+      "#e69c6d",
+      "forest",
+      "wood",
+      "firefly",
+      "Thorns guard the narrow wooden bridges.",
+      { dark: 1 },
+    ),
+    makeTheme(
+      "Neon Necropolis",
+      ["#172849", "#5d4c83"],
+      ["#435078", "#24283e"],
+      ["#525b78", "#32303e", "#8a7f9d", "#342c63"],
+      "#ff79bb",
+      "city",
+      "ruin",
+      "spark",
+      "Cracked rooftops glow in the night.",
+      { dark: 1 },
+    ),
+    makeTheme(
+      "Sunken Palace",
+      ["#16404c", "#6a9c91"],
+      ["#54746b", "#263d41"],
+      ["#658074", "#3d4140", "#a5a58b", "#234b54"],
+      "#ffbd6f",
+      "dungeon",
+      "stone",
+      "rain",
+      "The palace floor has nearly vanished.",
+    ),
+    makeTheme(
+      "Obsidian Fields",
+      ["#311c36", "#9b514d"],
+      ["#6d414b", "#302735"],
+      ["#70434a", "#302a30", "#a36355", "#39283c"],
+      "#f3d169",
+      "redland",
+      "stone",
+      "ember",
+      "Black rock and fire leave little room.",
+      { lava: 1 },
+    ),
+    makeTheme(
+      "Last Light Citadel",
+      ["#8b7896", "#f0c18c"],
+      ["#9d876f", "#554b4d"],
+      ["#86715d", "#4a4140", "#b38c68", "#5d4d69"],
+      "#f3e080",
+      "ruins",
+      "ruin",
+      "dust",
+      "One final climb through the ruins.",
+      { wind: 1 },
+    ),
+    makeTheme(
+      "Eclipse Crown",
+      ["#090e27", "#372a55"],
+      ["#302c50", "#171b32"],
+      ["#4c466a", "#252632", "#81749b", "#171c3a"],
+      "#ff6d9c",
+      "moon",
+      "ice",
+      "spark",
+      "The last path waits in the eclipse.",
+      { dark: 1 },
+    ),
+  ]);
   function th() {
-    return TH[(lvN - 1) % 6];
+    return TH[lvN - 1];
   }
 
   function rng(s) {
@@ -175,13 +486,14 @@
     };
   }
   function gen(n) {
+    var difficulty = (n - 1) / (MAX_LEVEL - 1);
     var r = rng(n * 7919 + 13),
       T = TL,
       gy = 560,
       xx = 0,
-      len = Math.min(220, 60 + n * 12) * T,
+      len = Math.min(300, 62 + n * 8) * T,
       since = 0,
-      t = TH[(n - 1) % 6];
+      t = TH[n - 1];
     sol = [];
     hz = [];
     en = [];
@@ -198,8 +510,8 @@
     ring(7 * T, gy - 70);
     xx = 10 * T;
     while (xx < len) {
-      if (r() < 0.3) {
-        var gw = Math.floor((2 + r() * 1.3) * T);
+      if (r() < 0.24 + difficulty * 0.12) {
+        var gw = Math.floor((2 + r() * (1.3 + difficulty * 0.55)) * T);
         if (gw >= 3 * T || t.lava || r() < 0.35)
           mv.push({
             x: xx + gw / 2 - 50,
@@ -217,7 +529,7 @@
         ring(xx + gw / 2, gy - 95);
         xx += gw;
       }
-      if (r() < 0.4)
+      if (r() < 0.32 + difficulty * 0.18)
         gy = Math.max(
           400,
           Math.min(
@@ -225,20 +537,20 @@
             gy + (r() < 0.5 ? -1 : 1) * (1 + Math.floor(r() * 2)) * T,
           ),
         );
-      var w = Math.floor(4 + r() * 6) * T,
+      var w = Math.floor(4 + r() * (6 - difficulty * 2)) * T,
         sx = xx,
         nr = 2 + Math.floor(r() * 3);
       sol.push({ x: sx, y: gy, w: w, h: 500 });
       for (var k = 0; k < nr; k++)
         ring(sx + (w * (k + 1)) / (nr + 1), gy - 34 - (k % 2) * 30);
-      if (r() < 0.3 + n * 0.025 && w >= 5 * T)
+      if (r() < 0.2 + difficulty * 0.42 && w >= 5 * T)
         hz.push({
-          x: sx + 2 * T + Math.floor(r() * (w - 4 * T - 80)),
+          x: sx + 2 * T + Math.floor(r() * Math.max(1, w - 4 * T - 80)),
           y: gy - 24,
           w: T * (r() < 0.5 ? 1 : 2),
           h: 24,
         });
-      if (r() < 0.28 + n * 0.03 && w >= 6 * T)
+      if (r() < 0.18 + difficulty * 0.36 && w >= 6 * T)
         en.push({
           x: sx + w / 2,
           y: gy - 14,
@@ -246,9 +558,9 @@
           a: sx + T,
           b: sx + w - T,
           d: 1,
-          sp: 50 + n * 4 + r() * 20,
+          sp: 50 + n * 3 + r() * 20,
         });
-      if (r() < 0.35) {
+      if (r() < 0.3 + difficulty * 0.15) {
         var pwd = (3 + Math.floor(r() * 2)) * T,
           ppx = sx + (w - pwd) / 2;
         sol.push({ x: ppx, y: gy - 95, w: pwd, h: 18 });
@@ -260,9 +572,9 @@
         ring(sx + 4.7 * T, gy - 272);
         ring(sx + 6.3 * T, gy - 272);
       }
-      if (r() < 0.15)
+      if (r() < 0.16 - difficulty * 0.08)
         pw.push({ x: sx + w / 2, y: gy - 70, t: r() < 0.5 ? "s" : "j" });
-      if (since > 35 * T) {
+      if (since > (35 - difficulty * 8) * T) {
         fl.push({ x: sx + T, y: gy, on: 0 });
         since = 0;
       }
@@ -398,7 +710,7 @@
   }
   function buildLevels() {
     var h = "";
-    for (var i = 1; i <= 12; i++) {
+    for (var i = 1; i <= MAX_LEVEL; i++) {
       var s = save.s[i] || 0,
         st = "";
       for (var j = 0; j < 3; j++) st += j < s ? "★" : "☆";
@@ -410,7 +722,7 @@
         "><b>" +
         i +
         "</b><small>" +
-        TH[(i - 1) % 6].n +
+        TH[i - 1].n +
         "</small><em>" +
         st +
         "</em></button>";
@@ -422,7 +734,7 @@
     if (b && !b.disabled) start(+b.dataset.n, true);
   });
   $("play").onclick = function () {
-    start(Math.min(save.u, 12), true);
+    start(Math.min(save.u, MAX_LEVEL), true);
   };
   $("levels").onclick = function () {
     buildLevels();
@@ -440,7 +752,7 @@
     $("mb").textContent = muted ? "✕" : "♪";
   };
   $("nx").onclick = function () {
-    start(lvN + 1, false);
+    if (lvN < MAX_LEVEL) start(lvN + 1, false);
   };
   $("rp").onclick = function () {
     start(lvN, true);
@@ -496,7 +808,7 @@
       bonus = Math.max(0, Math.floor((par * 1.5 - G.t) * 10)) + st * 100;
     G.score += bonus;
     G.lives = Math.min(5, G.lives + 1);
-    save.u = Math.max(save.u, lvN + 1);
+    save.u = Math.min(MAX_LEVEL, Math.max(save.u, lvN + 1));
     save.s[lvN] = Math.max(save.s[lvN] || 0, st);
     persist();
     var s = "";
@@ -511,6 +823,7 @@
       " · Score " +
       G.score +
       " · Extra life earned";
+    $("nx").classList.toggle("hid", lvN >= MAX_LEVEL);
     show("wnm");
     [523, 659, 784, 1046].forEach(function (f, i) {
       setTimeout(function () {
@@ -704,6 +1017,222 @@
     x.arcTo(px, py, px + w, py, r);
     x.closePath();
   }
+  function drawRidge(color, base, height, parallax) {
+    x.fillStyle = color;
+    x.beginPath();
+    x.moveTo(0, 720);
+    for (var sx = 0; sx <= VW + 24; sx += 24) {
+      var wx = sx + cam * parallax,
+        shape =
+          Math.abs(Math.sin(wx * 0.004)) * 0.68 +
+          Math.abs(Math.sin(wx * 0.011)) * 0.32;
+      x.lineTo(sx, base - shape * height);
+    }
+    x.lineTo(VW, 720);
+    x.fill();
+  }
+  function drawPines(color, base, parallax, spacing) {
+    var offset = (cam * parallax) % spacing;
+    x.fillStyle = color;
+    for (var i = -1; i < VW / spacing + 2; i++) {
+      var px = i * spacing - offset,
+        height = 62 + (Math.abs(i * 37) % 46);
+      x.fillRect(px - 3, base - height * 0.24, 6, height * 0.24);
+      for (var tier = 0; tier < 3; tier++) {
+        var top = base - height + tier * height * 0.25,
+          half = height * (0.25 - tier * 0.04);
+        x.beginPath();
+        x.moveTo(px, top);
+        x.lineTo(px - half, top + height * 0.42);
+        x.lineTo(px + half, top + height * 0.42);
+        x.closePath();
+        x.fill();
+      }
+    }
+  }
+  function drawEnvironment(t) {
+    if (t.scene === "moon") {
+      for (var i = 0; i < 54; i++) {
+        var sx = (((i * 149 - cam * 0.035) % (VW + 40)) + VW + 40) % (VW + 40);
+        x.fillStyle = i % 4 === 0 ? "#d9f6ff" : "rgba(220,240,255,.55)";
+        x.beginPath();
+        x.arc(sx, 24 + ((i * 71) % 290), i % 4 === 0 ? 2 : 1, 0, PI2);
+        x.fill();
+      }
+      var mx = VW * 0.78,
+        moon = x.createRadialGradient(mx - 12, 118, 4, mx, 130, 58);
+      moon.addColorStop(0, "#ffffff");
+      moon.addColorStop(0.65, "#b7edff");
+      moon.addColorStop(1, "rgba(85,177,229,.08)");
+      x.fillStyle = moon;
+      x.beginPath();
+      x.arc(mx, 130, 58, 0, PI2);
+      x.fill();
+      drawRidge("#17395f", 520, 200, 0.12);
+      drawRidge("#102b4d", 545, 150, 0.24);
+      drawPines("#0a2341", 545, 0.3, 74);
+      var lake = x.createLinearGradient(0, 535, 0, 675);
+      lake.addColorStop(0, "#28658a");
+      lake.addColorStop(1, "#102a49");
+      x.fillStyle = lake;
+      x.fillRect(0, 535, VW, 150);
+      x.fillStyle = "rgba(181,231,255,.42)";
+      for (i = 0; i < 12; i++) {
+        var lineX = (((i * 97 - cam * 0.16) % (VW + 60)) + VW + 60) % (VW + 60);
+        x.fillRect(lineX, 556 + i * 8, 24 + (i % 4) * 12, 2);
+      }
+      return;
+    }
+    if (t.scene === "forest") {
+      drawRidge("#264f48", 480, 120, 0.1);
+      drawRidge("#193e38", 535, 100, 0.22);
+      drawPines("#183a35", 570, 0.3, 106);
+      for (var tree = -1; tree < VW / 190 + 2; tree++) {
+        var tx = tree * 190 - ((cam * 0.12) % 190),
+          th = 145 + (Math.abs(tree * 43) % 90);
+        x.fillStyle = "#392f2c";
+        x.fillRect(tx, 540 - th * 0.35, 18, th * 0.6);
+        x.fillStyle = t.h[0];
+        for (var leaf = 0; leaf < 5; leaf++) {
+          x.beginPath();
+          x.arc(
+            tx + 9 + (leaf % 2 ? 28 : -28),
+            540 - th * 0.48 + leaf * 20,
+            34,
+            0,
+            PI2,
+          );
+          x.fill();
+        }
+      }
+      return;
+    }
+    if (t.scene === "dungeon") {
+      x.fillStyle = "rgba(8,15,28,.32)";
+      x.fillRect(0, 210, VW, 510);
+      for (var row = 0; row < 8; row++) {
+        var y = 230 + row * 62,
+          offset = row % 2 ? 48 : 0;
+        for (var col = -1; col < VW / 96 + 2; col++) {
+          var bx = col * 96 + offset - ((cam * 0.08) % 96);
+          x.fillStyle = row % 2 ? "rgba(106,137,145,.13)" : "rgba(5,14,28,.18)";
+          rr(bx + 2, y + 2, 91, 56, 5);
+          x.fill();
+          x.strokeStyle = "rgba(177,220,218,.12)";
+          x.lineWidth = 2;
+          x.stroke();
+        }
+      }
+      x.strokeStyle = "rgba(130,190,195,.25)";
+      x.lineWidth = 3;
+      for (var chain = 0; chain < 5; chain++) {
+        var cx =
+          (((chain * 177 - cam * 0.12) % (VW + 80)) + VW + 80) % (VW + 80);
+        x.beginPath();
+        x.moveTo(cx, 215);
+        x.lineTo(cx, 290 + (chain % 3) * 24);
+        x.stroke();
+      }
+      return;
+    }
+    if (t.scene === "city") {
+      for (var building = -1; building < VW / 104 + 2; building++) {
+        var bx = building * 104 - ((cam * 0.16) % 104),
+          bh = 105 + (Math.abs(building * 53) % 150);
+        x.fillStyle = "#172a48";
+        x.fillRect(bx, 535 - bh, 86, bh);
+        x.fillStyle = "rgba(174,209,211,.25)";
+        for (var windowY = 0; windowY < bh - 22; windowY += 30)
+          for (var windowX = 0; windowX < 3; windowX++)
+            x.fillRect(bx + 12 + windowX * 23, 550 - bh + windowY, 8, 12);
+        x.fillStyle = "#263655";
+        x.fillRect(bx + 27, 510 - bh, 32, 25);
+      }
+      drawRidge("rgba(15,35,57,.76)", 585, 42, 0.3);
+      return;
+    }
+    if (t.scene === "ruins") {
+      drawRidge("rgba(72,81,75,.36)", 500, 90, 0.12);
+      for (var pillar = -1; pillar < VW / 146 + 2; pillar++) {
+        var px = pillar * 146 - ((cam * 0.2) % 146),
+          top = 300 + (Math.abs(pillar * 61) % 115);
+        x.fillStyle = "rgba(78,75,68,.76)";
+        x.fillRect(px + 22, top, 24, 230);
+        x.fillRect(px + 12, top - 8, 44, 13);
+        x.fillRect(px + 15, 520, 38, 12);
+        if (pillar % 2 === 0) {
+          x.fillRect(px + 38, top + 8, 88, 18);
+          x.fillRect(px + 108, top + 8, 18, 110);
+        }
+      }
+      return;
+    }
+    if (t.scene === "redland") {
+      x.fillStyle = "rgba(255,211,145,.72)";
+      x.beginPath();
+      x.arc(VW * 0.76, 165, 42, 0, PI2);
+      x.fill();
+      drawRidge(t.h[0], 510, 155, 0.12);
+      drawRidge(t.h[1], 590, 105, 0.24);
+      return;
+    }
+    [
+      [0.2, 430, t.h[0], 60],
+      [0.45, 500, t.h[1], 45],
+    ].forEach(function (l) {
+      x.fillStyle = l[2];
+      x.beginPath();
+      x.moveTo(0, 720);
+      for (var sx = 0; sx <= VW + 20; sx += 20) {
+        var wx = sx + cam * l[0];
+        x.lineTo(
+          sx,
+          l[1] -
+            Math.sin(wx * 0.006) * l[3] -
+            Math.sin(wx * 0.017) * l[3] * 0.3,
+        );
+      }
+      x.lineTo(VW, 720);
+      x.fill();
+    });
+  }
+  function drawPlatform(s, t) {
+    if (t.block === "wood") {
+      x.fillStyle = "#50351f";
+      rr(s.x, s.y, s.w, s.h, 5);
+      x.fill();
+      x.fillStyle = "#a87342";
+      x.fillRect(s.x + 2, s.y + 2, s.w - 4, Math.max(3, s.h * 0.42));
+      x.strokeStyle = "#573922";
+      x.lineWidth = 2;
+      for (var seam = s.x + 56; seam < s.x + s.w; seam += 56) {
+        x.beginPath();
+        x.moveTo(seam, s.y + 2);
+        x.lineTo(seam, s.y + s.h - 2);
+        x.stroke();
+      }
+      x.fillStyle = "rgba(255,220,156,.45)";
+      x.fillRect(s.x + 5, s.y + 2, Math.max(0, s.w - 10), 2);
+      return;
+    }
+    x.fillStyle = t.pl;
+    rr(s.x, s.y, s.w, s.h, 8);
+    x.fill();
+    x.fillStyle = "rgba(0,0,0,.18)";
+    x.fillRect(s.x + 6, s.y + s.h - 6, s.w - 12, 4);
+    if (t.block === "ruin" || t.block === "stone") {
+      x.strokeStyle = "rgba(35,35,38,.45)";
+      x.lineWidth = 2;
+      x.beginPath();
+      for (var seam = s.x + 52; seam < s.x + s.w; seam += 52) {
+        x.moveTo(seam, s.y + 2);
+        x.lineTo(seam, s.y + s.h - 2);
+      }
+      x.stroke();
+      x.fillStyle = "rgba(255,255,255,.18)";
+      x.fillRect(s.x + 6, s.y + 2, Math.max(0, s.w - 12), 2);
+    }
+  }
   function draw() {
     var t = th(),
       vis0 = cam - 80,
@@ -739,25 +1268,7 @@
         x.fill();
       }
     });
-    [
-      [0.2, 430, t.h[0], 60],
-      [0.45, 500, t.h[1], 45],
-    ].forEach(function (l) {
-      x.fillStyle = l[2];
-      x.beginPath();
-      x.moveTo(0, 720);
-      for (var sx = 0; sx <= VW + 20; sx += 20) {
-        var wx = sx + cam * l[0];
-        x.lineTo(
-          sx,
-          l[1] -
-            Math.sin(wx * 0.006) * l[3] -
-            Math.sin(wx * 0.017) * l[3] * 0.3,
-        );
-      }
-      x.lineTo(VW, 720);
-      x.fill();
-    });
+    drawEnvironment(t);
     x.save();
     x.translate(-cam, 0);
     x.fillStyle = t.f;
@@ -771,19 +1282,11 @@
         rr(s.x, s.y - 4, s.w, 16, 6);
         x.fill();
       } else {
-        x.fillStyle = t.pl;
-        rr(s.x, s.y, s.w, s.h, 8);
-        x.fill();
-        x.fillStyle = "rgba(0,0,0,.18)";
-        x.fillRect(s.x + 6, s.y + s.h - 6, s.w - 12, 4);
+        drawPlatform(s, t);
       }
     });
     mv.forEach(function (s) {
-      x.fillStyle = t.pl;
-      rr(s.x, s.y, s.w, s.h, 8);
-      x.fill();
-      x.fillStyle = "rgba(0,0,0,.2)";
-      x.fillRect(s.x + 8, s.y + s.h - 5, s.w - 16, 3);
+      drawPlatform(s, t);
     });
     hz.forEach(function (h) {
       if (h.x > vis1 || h.x + h.w < vis0) return;

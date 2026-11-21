@@ -1,4 +1,4 @@
-const CACHE = "bounce-reborn-v2";
+const CACHE = "bounce-reborn-v4";
 const CORE = [
   "./",
   "index.html",
