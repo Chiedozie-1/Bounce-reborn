@@ -183,8 +183,8 @@ p {
   position: fixed;
   right: 22px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
-  width: 100px;
-  height: 100px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.55);
   background: radial-gradient(circle at 35% 28%, #ff9a8a, #ff3b3b 55%, #b81c1c);
@@ -212,8 +212,8 @@ p {
   position: fixed;
   left: 22px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
-  width: 148px;
-  height: 148px;
+  width: 112px;
+  height: 112px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
@@ -226,31 +226,26 @@ p {
   touch-action: none;
   z-index: 6;
 }
-#js::before,
-#js::after {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 18px;
-}
-#js::before {
-  content: "◀";
-  left: 12px;
-}
-#js::after {
-  content: "▶";
-  right: 12px;
-}
 #jk {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 68px;
-  height: 68px;
-  margin: -34px 0 0 -34px;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff, #a9bcff 55%, #5a74e0);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
   transition: transform 0.12s;
+}
+
+@media (orientation: landscape) {
+  #js {
+    left: 14px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  }
+  .tb {
+    right: 14px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  }
 }

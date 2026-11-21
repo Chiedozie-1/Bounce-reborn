@@ -688,7 +688,10 @@
     P = P.filter(function (q) {
       return q.l > 0;
     });
-    var tg = Math.max(0, Math.min(Lw - VW, B.x - VW * 0.38));
+    var cameraOffset = matchMedia("(orientation: landscape)").matches
+      ? 0.28
+      : 0.38;
+    var tg = Math.max(0, Math.min(Lw - VW, B.x - VW * cameraOffset));
     cam += (tg - cam) * Math.min(1, dt * 6);
   }
 
