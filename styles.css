@@ -121,6 +121,72 @@ p {
   flex-wrap: wrap;
   justify-content: center;
 }
+.update-banner {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--pan);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.update-banner .btn {
+  padding: 7px 14px;
+  font-size: 16px;
+}
+/* Ball skins are temporarily disabled.
+.skin-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.skin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.skin.selected {
+  border-color: var(--acc2);
+}
+.skin:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.skin-dot {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    #fff,
+    var(--skin-color) 55%,
+    #222
+  );
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+.skin small {
+  display: block;
+  color: var(--mut);
+  font-size: 12px;
+}
+*/
 #lvs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

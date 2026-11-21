@@ -1,9 +1,10 @@
-const CACHE = "bounce-reborn-v4";
+const CACHE = "bounce-reborn-v10";
 const CORE = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
+  "update.js?v=2",
   "manifest.webmanifest",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -12,12 +13,11 @@ const CORE = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches
-      .open(CACHE)
-      .then((c) => c.addAll(CORE))
-      .then(() => self.skipWaiting()),
-  );
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)));
+});
+
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {

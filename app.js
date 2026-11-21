@@ -8,6 +8,7 @@
     H,
     SC,
     VW,
+    touchControls = matchMedia("(pointer:coarse)").matches,
     DPR = Math.min(2, window.devicePixelRatio || 1);
   function rsz() {
     W = innerWidth;
@@ -40,12 +41,22 @@
     keys = {},
     AC = null,
     muted = false,
+    musicClock = 0,
+    musicStep = 0,
+    dailyMode = false,
+    dailyDate = null,
+    dailySeed = null,
+    dailyObjective = null,
     PI2 = 6.2832,
     TL = 40;
-  var save = { u: 1, s: {} };
+  var save = { u: 1, s: {}, daily: {} };
   try {
     var sv = JSON.parse(localStorage.getItem("bouncereborn") || "null");
-    if (sv && sv.u) save = sv;
+    if (sv && sv.u) {
+      save = sv;
+      save.s = save.s || {};
+      save.daily = save.daily || {};
+    }
   } catch (e) {}
   function persist() {
     try {
@@ -76,6 +87,22 @@
     o.start(n);
     o.stop(n + d + 0.02);
   }
+  function vibrate(pattern) {
+    if (navigator.vibrate && matchMedia("(pointer:coarse)").matches)
+      navigator.vibrate(pattern);
+  }
+  function music(dt) {
+    if (S !== "play" || muted || !AC) return;
+    musicClock += dt;
+    while (musicClock >= 0.3) {
+      musicClock -= 0.3;
+      var notes = [262, 330, 392, 330, 294, 349, 440, 349];
+      var note = notes[musicStep % notes.length];
+      beep(note, 0.2, "sine", 0.018);
+      if (musicStep % 4 === 0) beep(note / 2, 0.24, "triangle", 0.012);
+      musicStep++;
+    }
+  }
 
   var TH = [
     {
@@ -90,7 +117,7 @@
       g: 1800,
       a: "cloud",
       scene: "meadow",
-      tip: "A gentle start.",
+      tip: "A short course to learn the basics.",
     },
     {
       n: "Dune Sea",
@@ -168,6 +195,88 @@
     },
   ];
   var MAX_LEVEL = 30;
+  var DAILY_OBJECTIVES = [
+    { id: "ring-rush", title: "Ring Rush" },
+    { id: "stomp-no-death", title: "Enemy Hunt" },
+    { id: "flawless", title: "Flawless Run" },
+    { id: "two-lives", title: "Two Lives Left" },
+    { id: "checkpoint-tour", title: "Checkpoint Tour" },
+    { id: "powerup-hunt", title: "Power-up Hunt" },
+    { id: "spring-run", title: "Spring Fling" },
+  ];
+  /*
+  Ball skins are temporarily disabled.
+  var SKINS = [
+    {
+      id: "classic",
+      name: "Classic",
+      stars: 0,
+      colors: ["#ff9a8a", "#ff3b3b", "#a01616"],
+    },
+    {
+      id: "ocean",
+      name: "Ocean",
+      stars: 5,
+      colors: ["#a9eeff", "#28a9df", "#114b9b"],
+    },
+    {
+      id: "sunset",
+      name: "Sunset",
+      stars: 15,
+      colors: ["#fff0a0", "#ff9c32", "#bc3b2b"],
+    },
+    {
+      id: "mint",
+      name: "Mint",
+      stars: 30,
+      colors: ["#d0ffe1", "#43d69b", "#167359"],
+    },
+    {
+      id: "violet",
+      name: "Violet",
+      stars: 50,
+      colors: ["#f1cbff", "#a55be0", "#532080"],
+    },
+  ];
+  function earnedStars() {
+    return Object.keys(save.s).reduce(function (total, level) {
+      return total + Math.min(3, Number(save.s[level]) || 0);
+    }, 0);
+  }
+  function selectedSkin() {
+    return (
+      SKINS.find(function (skin) {
+        return skin.id === save.skin;
+      }) || SKINS[0]
+    );
+  }
+  function buildSkins() {
+    var total = earnedStars();
+    $("star-total").textContent = "Stars earned: " + total;
+    $("skins").innerHTML = SKINS.map(function (skin) {
+      var unlocked = total >= skin.stars;
+      return (
+        '<button class="skin' +
+        (save.skin === skin.id ? " selected" : "") +
+        '" data-skin="' +
+        skin.id +
+        '"' +
+        (unlocked ? "" : " disabled") +
+        '><span class="skin-dot" style="--skin-color:' +
+        skin.colors[1] +
+        '"></span><span>' +
+        skin.name +
+        "<small>" +
+        (unlocked
+          ? save.skin === skin.id
+            ? "Selected"
+            : "Unlocked"
+          : skin.stars + " stars to unlock") +
+        "</small></span></button>"
+      );
+    }).join("");
+  }
+  */
   function makeTheme(n, s, h, colors, en, scene, block, a, tip, flags) {
     var t = {
       n: n,
@@ -485,9 +594,22 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  function gen(n) {
+  function getDailyChallenge() {
+    var date = new Date().toISOString().slice(0, 10),
+      hash = 2166136261;
+    for (var i = 0; i < date.length; i++)
+      hash = Math.imul(hash ^ date.charCodeAt(i), 16777619);
+    var seed = hash >>> 0;
+    return {
+      date: date,
+      seed: seed,
+      level: (seed % MAX_LEVEL) + 1,
+      objectiveId: DAILY_OBJECTIVES[seed % DAILY_OBJECTIVES.length].id,
+    };
+  }
+  function gen(n, seedOverride) {
     var difficulty = (n - 1) / (MAX_LEVEL - 1);
-    var r = rng(n * 7919 + 13),
+    var r = rng(seedOverride === undefined ? n * 7919 + 13 : seedOverride),
       T = TL,
       gy = 560,
       xx = 0,
@@ -502,6 +624,44 @@
     pw = [];
     mv = [];
     fl = [];
+    if (n === 1 && seedOverride === undefined) {
+      sol = [
+        { x: 0, y: 560, w: 650, h: 500 },
+        { x: 700, y: 520, w: 180, h: 18 },
+        { x: 920, y: 560, w: 420, h: 500 },
+        { x: 1420, y: 560, w: 420, h: 500 },
+        { x: 1920, y: 560, w: 480, h: 500 },
+        { x: 2480, y: 560, w: 520, h: 500 },
+        { x: 1640, y: 420, w: 160, h: 18 },
+      ];
+      rg = [
+        180, 330, 510, 735, 820, 1010, 1260, 1460, 1620, 1780, 1980, 2160, 2340,
+        2550, 2700, 2860,
+      ].map(function (px, index) {
+        return {
+          x: px,
+          y: index === 3 || index === 4 ? 480 : index === 8 ? 360 : 520,
+          c: 0,
+        };
+      });
+      hz = [
+        { x: 485, y: 536, w: 40, h: 24 },
+        { x: 1060, y: 536, w: 40, h: 24 },
+      ];
+      en = [];
+      sp = [{ x: 1510, y: 548, w: 44, h: 12, t: 0 }];
+      pw = [];
+      mv = [];
+      fl = [
+        { x: 1220, y: 560, on: 0 },
+        { x: 2040, y: 560, on: 0 },
+      ];
+      N = rg.length;
+      Lw = 3000;
+      goal = { x: 2870, y: 470, w: 60, h: 90, open: 0 };
+      AM = [];
+      return;
+    }
     function ring(px, py) {
       rg.push({ x: px, y: py, c: 0 });
     }
@@ -619,6 +779,160 @@
           t.a === "cloud" ? 40 + Math.random() * 40 : 1.5 + Math.random() * 2.5,
       });
   }
+  function prepareDailyObjective(challenge) {
+    var candidates = sol.filter(function (platform) {
+      return (
+        platform.h > 100 &&
+        platform.w >= 4 * TL &&
+        platform.x > 6 * TL &&
+        platform.x + platform.w < goal.x - 120 &&
+        !hz.some(function (hazard) {
+          return (
+            hazard.x < platform.x + platform.w &&
+            hazard.x + hazard.w > platform.x
+          );
+        })
+      );
+    });
+    var id = challenge.objectiveId,
+      target,
+      limit,
+      label;
+    if (id === "ring-rush") {
+      target = Math.min(N, Math.max(12, Math.floor(N * 0.45)));
+      limit = 40 + Math.round(lvN * 1.5);
+      label = "Collect " + target + " rings in " + limit + " seconds";
+      return {
+        id: id,
+        title: label,
+        target: target,
+        limit: limit,
+        complete: false,
+      };
+    }
+    if (id === "stomp-no-death") {
+      target = 2 + ((challenge.seed >>> 4) % 3);
+      for (var enemyIndex = 0; enemyIndex < candidates.length; enemyIndex++) {
+        if (en.length >= target) break;
+        var enemyPlatform = candidates[enemyIndex],
+          enemyX = enemyPlatform.x + enemyPlatform.w / 2;
+        if (
+          en.some(function (enemy) {
+            return Math.abs(enemy.x - enemyX) < 100;
+          })
+        )
+          continue;
+        en.push({
+          x: enemyX,
+          y: enemyPlatform.y - 14,
+          r: 14,
+          a: enemyPlatform.x + TL,
+          b: enemyPlatform.x + enemyPlatform.w - TL,
+          d: 1,
+          sp: 70 + lvN * 2,
+        });
+      }
+      target = Math.min(target, en.length);
+      if (target > 0)
+        return {
+          id: id,
+          title: "Stomp " + target + " enemies without dying",
+          target: target,
+        };
+      id = "flawless";
+    }
+    if (id === "checkpoint-tour") {
+      target = Math.min(1 + ((challenge.seed >>> 5) % 2), candidates.length);
+      for (
+        var checkpointIndex = 0;
+        checkpointIndex < target;
+        checkpointIndex++
+      ) {
+        var checkpointPlatform = candidates[checkpointIndex],
+          checkpointX = checkpointPlatform.x + checkpointPlatform.w * 0.65;
+        if (
+          !fl.some(function (flag) {
+            return Math.abs(flag.x - checkpointX) < 100;
+          })
+        )
+          fl.push({ x: checkpointX, y: checkpointPlatform.y, on: 0 });
+      }
+      target = Math.min(target, fl.length);
+      if (target > 0)
+        return {
+          id: id,
+          title: "Activate " + target + " checkpoints",
+          target: target,
+        };
+      id = "flawless";
+    }
+    if (id === "powerup-hunt") {
+      target = 2 + ((challenge.seed >>> 6) % 2);
+      for (var powerIndex = 0; powerIndex < candidates.length; powerIndex++) {
+        if (pw.length >= target) break;
+        var powerPlatform = candidates[powerIndex],
+          powerX = powerPlatform.x + powerPlatform.w * 0.55;
+        if (
+          pw.some(function (power) {
+            return Math.abs(power.x - powerX) < 90;
+          })
+        )
+          continue;
+        pw.push({
+          x: powerX,
+          y: powerPlatform.y - 70,
+          t: powerIndex % 2 ? "s" : "j",
+        });
+      }
+      target = Math.min(target, pw.length);
+      if (target > 0)
+        return {
+          id: id,
+          title: "Collect " + target + " power-ups",
+          target: target,
+        };
+      id = "flawless";
+    }
+    if (id === "spring-run") {
+      target = 2 + ((challenge.seed >>> 7) % 2);
+      for (
+        var springIndex = 0;
+        springIndex < candidates.length;
+        springIndex++
+      ) {
+        if (sp.length >= target) break;
+        var springPlatform = candidates[springIndex],
+          springX = springPlatform.x + springPlatform.w * 0.6;
+        if (
+          sp.some(function (spring) {
+            return Math.abs(spring.x - springX) < 90;
+          })
+        )
+          continue;
+        sp.push({
+          x: springX,
+          y: springPlatform.y - 12,
+          w: 44,
+          h: 12,
+          t: 0,
+        });
+      }
+      target = Math.min(target, sp.length);
+      if (target > 0)
+        return {
+          id: id,
+          title: "Activate " + target + " spring pads",
+          target: target,
+        };
+      id = "flawless";
+    }
+    if (id === "two-lives")
+      return { id: id, title: "Finish with exactly 2 lives" };
+    return {
+      id: "flawless",
+      title: "Finish without losing a life",
+    };
+  }
 
   function newBall(px, py) {
     return {
@@ -645,12 +959,17 @@
       if (!on) $(i).classList.add("hid");
     });
   }
-  function start(n, fresh) {
+  function start(n, fresh, challenge) {
     ac();
     var sc = G && !fresh ? G.score : 0,
       lv = G && !fresh ? G.lives : 3;
+    dailyMode = !!challenge;
+    dailyDate = challenge ? challenge.date : null;
+    dailySeed = challenge ? challenge.seed : null;
+    if (challenge) n = challenge.level;
     lvN = n;
-    gen(n);
+    gen(n, dailyMode ? dailySeed : undefined);
+    dailyObjective = challenge ? prepareDailyObjective(challenge) : null;
     G = {
       t: 0,
       mt: 0,
@@ -664,22 +983,33 @@
       intro: 2.4,
       msg: 0,
       deaths: 0,
+      kills: 0,
+      powerups: 0,
+      checkpoints: 0,
+      springHits: 0,
     };
     B = newBall(100, 480);
     P = [];
     cam = 0;
+    musicClock = 0;
+    musicStep = 0;
     S = "play";
     show(null);
     $("ctl").classList.remove("hid");
-    if (matchMedia("(pointer:coarse)").matches)
+    if (touchControls)
       ["js", "tj"].forEach(function (i) {
         $(i).classList.remove("hid");
       });
+    $("rt").textContent = dailyMode ? "Retry challenge" : "Try again";
     keys.ax = 0;
   }
   function menu() {
     S = "menu";
     hud(false);
+    dailyMode = false;
+    dailyDate = null;
+    dailySeed = null;
+    dailyObjective = null;
     lvN = 1;
     gen(1);
     G = {
@@ -698,6 +1028,11 @@
     B = newBall(100, 480);
     P = [];
     show("stm");
+    var challenge = getDailyChallenge(),
+      dailyBest = save.daily[challenge.date];
+    $("daily").textContent = dailyBest
+      ? "Daily · Best " + dailyBest
+      : "Daily challenge";
   }
   function pause() {
     if (S === "play") {
@@ -736,6 +1071,10 @@
   $("play").onclick = function () {
     start(Math.min(save.u, MAX_LEVEL), true);
   };
+  $("daily").onclick = function () {
+    var challenge = getDailyChallenge();
+    start(challenge.level, true, challenge);
+  };
   $("levels").onclick = function () {
     buildLevels();
     show("lvm");
@@ -743,6 +1082,23 @@
   $("back").onclick = function () {
     show("stm");
   };
+  /*
+  Ball skin menu is temporarily disabled.
+  $("open-skins").onclick = function () {
+    buildSkins();
+    show("skinm");
+  };
+  $("skin-back").onclick = function () {
+    show("stm");
+  };
+  $("skins").addEventListener("click", function (e) {
+    var button = e.target.closest(".skin");
+    if (!button || button.disabled) return;
+    save.skin = button.dataset.skin;
+    persist();
+    buildSkins();
+  });
+  */
   $("rs").onclick = pause;
   $("pb").onclick = pause;
   $("mn").onclick = menu;
@@ -755,10 +1111,32 @@
     if (lvN < MAX_LEVEL) start(lvN + 1, false);
   };
   $("rp").onclick = function () {
-    start(lvN, true);
+    start(
+      lvN,
+      true,
+      dailyMode
+        ? {
+            date: dailyDate,
+            seed: dailySeed,
+            level: lvN,
+            objectiveId: dailyObjective.id,
+          }
+        : null,
+    );
   };
   $("rt").onclick = function () {
-    start(lvN, true);
+    start(
+      lvN,
+      true,
+      dailyMode
+        ? {
+            date: dailyDate,
+            seed: dailySeed,
+            level: lvN,
+            objectiveId: dailyObjective.id,
+          }
+        : null,
+    );
   };
 
   function burst(px, py, n, c) {
@@ -776,24 +1154,120 @@
       });
     }
   }
+  function dailyObjectiveComplete() {
+    if (!dailyMode || !dailyObjective) return false;
+    switch (dailyObjective.id) {
+      case "ring-rush":
+        return dailyObjective.complete;
+      case "stomp-no-death":
+        return G.kills >= dailyObjective.target && G.deaths === 0;
+      case "flawless":
+        return G.deaths === 0 && B.x >= goal.x - 50;
+      case "two-lives":
+        return G.lives === 2;
+      case "checkpoint-tour":
+        return G.checkpoints >= dailyObjective.target;
+      case "powerup-hunt":
+        return G.powerups >= dailyObjective.target;
+      case "spring-run":
+        return G.springHits >= dailyObjective.target;
+      default:
+        return false;
+    }
+  }
+  function dailyObjectiveStatus() {
+    if (!dailyMode || !dailyObjective) return "";
+    var status;
+    switch (dailyObjective.id) {
+      case "ring-rush":
+        status =
+          G.rings +
+          "/" +
+          dailyObjective.target +
+          " rings · " +
+          (dailyObjective.complete
+            ? "time target met"
+            : Math.max(0, Math.ceil(dailyObjective.limit - G.t)) + "s left");
+        break;
+      case "stomp-no-death":
+        status = G.kills + "/" + dailyObjective.target + " enemies · no deaths";
+        break;
+      case "flawless":
+        status = "Reach the portal without losing a life";
+        break;
+      case "two-lives":
+        status = "Lives: " + G.lives + " · finish with exactly 2";
+        break;
+      case "checkpoint-tour":
+        status =
+          G.checkpoints +
+          "/" +
+          dailyObjective.target +
+          " checkpoints activated";
+        break;
+      case "powerup-hunt":
+        status =
+          G.powerups + "/" + dailyObjective.target + " power-ups collected";
+        break;
+      case "spring-run":
+        status =
+          G.springHits + "/" + dailyObjective.target + " spring pads activated";
+        break;
+    }
+    return dailyObjective.title + ": " + status;
+  }
+  function failDaily(reason) {
+    if (!dailyMode || !dailyObjective || dailyObjective.failed) return;
+    dailyObjective.failed = true;
+    S = "over";
+    hud(false);
+    $("os").textContent =
+      "Daily challenge failed: " +
+      reason +
+      ". Retry today’s challenge to try again.";
+    $("rt").textContent = "Retry challenge";
+    show("ovm");
+  }
   function lose() {
     if (G.inv > 0 || S !== "play") return;
     if (G.sh > 0) {
       G.sh = 0;
       G.inv = 1;
+      vibrate(18);
       beep(300, 0.2, "triangle", 0.08, 150);
       burst(B.x, B.y, 14, "#9fd0ff");
       return;
     }
+    vibrate(55);
     G.lives--;
     G.deaths++;
     burst(B.x, B.y, 24, "#ff4d4d");
     beep(260, 0.4, "sawtooth", 0.08, 50);
+    if (
+      dailyMode &&
+      dailyObjective &&
+      (dailyObjective.id === "stomp-no-death" ||
+        dailyObjective.id === "flawless" ||
+        (dailyObjective.id === "two-lives" && G.lives < 2))
+    ) {
+      failDaily(
+        dailyObjective.id === "two-lives"
+          ? "you lost the required two-life finish"
+          : "you lost a life",
+      );
+      return;
+    }
     if (G.lives <= 0) {
       S = "over";
       hud(false);
-      $("os").textContent =
-        "Score " + G.score + ". Level " + lvN + " is waiting for another try.";
+      $("os").textContent = dailyMode
+        ? "Daily challenge failed: you ran out of lives. Retry today’s challenge."
+        : "Score " +
+          G.score +
+          ". Level " +
+          lvN +
+          " is waiting for another try.";
+      $("rt").textContent = dailyMode ? "Retry challenge" : "Try again";
       show("ovm");
       return;
     }
@@ -808,22 +1282,38 @@
       bonus = Math.max(0, Math.floor((par * 1.5 - G.t) * 10)) + st * 100;
     G.score += bonus;
     G.lives = Math.min(5, G.lives + 1);
-    save.u = Math.min(MAX_LEVEL, Math.max(save.u, lvN + 1));
-    save.s[lvN] = Math.max(save.s[lvN] || 0, st);
+    if (dailyMode) {
+      save.daily[dailyDate] = Math.max(
+        Number(save.daily[dailyDate]) || 0,
+        G.score,
+      );
+    } else {
+      save.u = Math.min(MAX_LEVEL, Math.max(save.u, lvN + 1));
+      save.s[lvN] = Math.max(save.s[lvN] || 0, st);
+    }
     persist();
     var s = "";
     for (var j = 0; j < 3; j++) s += j < st ? "★" : "☆";
     $("st").textContent = s;
-    $("wt").textContent = th().n + " cleared!";
-    $("ws").textContent =
-      "Time " +
-      Math.floor(G.t) +
-      "s · Bonus +" +
-      bonus +
-      " · Score " +
-      G.score +
-      " · Extra life earned";
-    $("nx").classList.toggle("hid", lvN >= MAX_LEVEL);
+    $("wt").textContent = dailyMode
+      ? "Daily challenge complete!"
+      : th().n + " cleared!";
+    $("ws").textContent = dailyMode
+      ? dailyDate +
+        " · Level " +
+        lvN +
+        " · Score " +
+        G.score +
+        " · Best today " +
+        save.daily[dailyDate]
+      : "Time " +
+        Math.floor(G.t) +
+        "s · Bonus +" +
+        bonus +
+        " · Score " +
+        G.score +
+        " · Extra life earned";
+    $("nx").classList.toggle("hid", dailyMode || lvN >= MAX_LEVEL);
     show("wnm");
     [523, 659, 784, 1046].forEach(function (f, i) {
       setTimeout(function () {
@@ -859,6 +1349,7 @@
       if (-vn > 260) {
         B.sq = Math.min(0.35, -vn / 2400);
         burst(B.x, B.y + B.r, 5, "#ffffff");
+        vibrate(12);
         beep(140 + -vn / 10, 0.07, "sine", 0.05);
       }
     }
@@ -944,6 +1435,14 @@
         beep(1200, 0.1, "sine", 0.07, 1800);
       }
     });
+    if (dailyMode && dailyObjective.id === "ring-rush") {
+      if (G.rings >= dailyObjective.target && G.t <= dailyObjective.limit)
+        dailyObjective.complete = true;
+      if (G.t > dailyObjective.limit && !dailyObjective.complete) {
+        failDaily("time ran out before enough rings were collected");
+        return;
+      }
+    }
     hz.forEach(function (h) {
       if (hitRect(h)) lose();
     });
@@ -954,10 +1453,12 @@
       if (near(e, e.r + B.r * 0.9)) {
         if (B.vy > 60 && B.y < e.y - 4) {
           e.dead = 1;
+          G.kills++;
           B.vy = -520;
           G.score += 100;
           burst(e.x, e.y, 12, th().en);
           beep(500, 0.12, "square", 0.07, 200);
+          vibrate(12);
         } else lose();
       }
     });
@@ -968,12 +1469,15 @@
         B.coy = 0;
         s.t = 0.25;
         B.sq = 0.3;
+        G.springHits++;
+        vibrate(20);
         beep(300, 0.3, "sine", 0.09, 1300);
       }
     });
     pw.forEach(function (p) {
       if (!p.c && near(p, B.r + 16)) {
         p.c = 1;
+        G.powerups++;
         if (p.t === "s") G.sh = 12;
         else G.pj = 12;
         beep(700, 0.15, "triangle", 0.08, 1400);
@@ -983,10 +1487,11 @@
       if (!f.on && B.x > f.x) {
         f.on = 1;
         G.cp = { x: f.x, y: f.y };
+        G.checkpoints++;
         beep(660, 0.15, "triangle", 0.07);
       }
     });
-    goal.open = G.rings >= N;
+    goal.open = dailyMode ? dailyObjectiveComplete() : G.rings >= N;
     if (near({ x: goal.x + 30, y: goal.y + 45 }, 60)) {
       if (goal.open) win();
       else G.msg = 1.5;
@@ -1447,12 +1952,75 @@
         104,
       );
     }
+    if (lvN === 1 && !dailyMode && S === "play") {
+      var hint =
+        B.x < 360
+          ? touchControls
+            ? "Drag the joystick to roll."
+            : "Press A/D or ←/→ to roll."
+          : B.x < 920
+            ? touchControls
+              ? "Tap the jump button to leap."
+              : "Press Space, W, or ↑ to jump."
+            : B.x < 1400
+              ? "Collect every ring to open the portal."
+              : B.x < 2180
+                ? touchControls
+                  ? "Springs boost you. Flags save progress."
+                  : "Springs launch you higher. Flags save progress."
+                : G.rings < N
+                  ? touchControls
+                    ? "Missed a ring? Roll back to collect it."
+                    : "Look back—you still need every ring."
+                  : touchControls
+                    ? "Portal open! Roll into it to finish."
+                    : "Portal open! Reach it to finish.";
+      var hintWidth = Math.max(1, Math.min(VW - 32, 540)),
+        hintX = (VW - hintWidth) / 2,
+        hintY = 116,
+        hintHeight = 46,
+        hintGradient = x.createLinearGradient(0, hintY, 0, hintY + hintHeight);
+      hintGradient.addColorStop(0, "rgba(255,255,255,.18)");
+      hintGradient.addColorStop(1, "rgba(120,155,230,.08)");
+      x.shadowColor = "rgba(5,12,30,.32)";
+      x.shadowBlur = 18;
+      x.shadowOffsetY = 5;
+      x.fillStyle = hintGradient;
+      rr(hintX, hintY, hintWidth, hintHeight, 17);
+      x.fill();
+      x.shadowBlur = 0;
+      x.shadowOffsetY = 0;
+      x.lineWidth = 1.2;
+      x.strokeStyle = "rgba(255,255,255,.3)";
+      x.stroke();
+      x.fillStyle = "#fff";
+      x.textAlign = "center";
+      x.font = "500 16px Fredoka,sans-serif";
+      x.fillText(hint, VW / 2, 145, hintWidth - 24);
+    }
+    if (dailyMode && dailyObjective) {
+      var objectiveWidth = Math.max(1, Math.min(VW - 24, 620));
+      x.fillStyle = "rgba(16,22,43,.86)";
+      rr((VW - objectiveWidth) / 2, 116, objectiveWidth, 40, 12);
+      x.fill();
+      x.fillStyle = "#fff";
+      x.textAlign = "center";
+      x.font = "500 18px Fredoka,sans-serif";
+      x.fillText(dailyObjectiveStatus(), VW / 2, 142, objectiveWidth - 16);
+    }
     x.shadowBlur = 0;
     if (G.msg > 0) {
       x.textAlign = "center";
       x.font = "700 26px Fredoka,sans-serif";
       x.fillStyle = "#ffd23f";
-      x.fillText("Collect all the rings to open the portal!", VW / 2, 150);
+      x.fillText(
+        dailyMode
+          ? "Complete the daily objective to open the portal!"
+          : "Collect all the rings to open the portal!",
+        VW / 2,
+        180,
+        VW - 24,
+      );
     }
     if (G.intro > 0) {
       x.globalAlpha = Math.min(1, G.intro);
@@ -1460,10 +2028,17 @@
       x.fillStyle = "#fff";
       x.shadowColor = "rgba(0,0,0,.6)";
       x.shadowBlur = 12;
-      x.font = "700 56px Fredoka,sans-serif";
-      x.fillText("Level " + lvN + ": " + t.n, VW / 2, 300);
-      x.font = "500 24px Fredoka,sans-serif";
-      x.fillText(t.tip, VW / 2, 340);
+      var title = "Level " + lvN + ": " + t.n,
+        titleSize = Math.min(56, Math.max(24, VW * 0.09));
+      x.font = "700 " + titleSize + "px Fredoka,sans-serif";
+      while (titleSize > 20 && x.measureText(title).width > VW - 32) {
+        titleSize--;
+        x.font = "700 " + titleSize + "px Fredoka,sans-serif";
+      }
+      x.fillText(title, VW / 2, 300, VW - 32);
+      var tipSize = Math.min(24, Math.max(16, VW * 0.045));
+      x.font = "500 " + tipSize + "px Fredoka,sans-serif";
+      x.fillText(t.tip, VW / 2, 340, VW - 32);
       x.globalAlpha = 1;
       x.shadowBlur = 0;
     }
@@ -1480,6 +2055,7 @@
       G.t += dt;
       cam = (cam + 40 * dt) % Math.max(1, Lw - VW);
     }
+    music(dt);
     draw();
     requestAnimationFrame(loop);
   }
@@ -1572,11 +2148,6 @@
 })();
 
 (function () {
-  if ("serviceWorker" in navigator) {
-    addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () {});
-    });
-  }
   var dp = null,
     b = document.getElementById("inst");
   addEventListener("beforeinstallprompt", function (e) {

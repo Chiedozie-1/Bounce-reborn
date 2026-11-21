@@ -30,6 +30,10 @@
   </head>
   <body>
     <canvas id="c"></canvas>
+    <div class="update-banner hid" id="update-banner" role="status">
+      <span>A new version is ready.</span>
+      <button class="btn" id="update-now">Reload</button>
+    </div>
     <div class="ctl hid" id="ctl">
       <button class="ib" id="pb" aria-label="Pause">❚❚</button
       ><button class="ib" id="mb" aria-label="Mute sound">♪</button>
@@ -60,11 +64,14 @@
           Roll, bounce and spring through 30 changing worlds. Collect every ring
           to open the portal.
         </p>
-        <p>Move: arrows or A/D · Jump: Space or W · Pause: P</p>
+        <!-- <p>Move: arrows or A/D · Jump: Space or W · Pause: P</p> -->
         <div class="row">
-          <button class="btn" id="play">Play</button
-          ><button class="btn alt" id="levels">Levels</button
-          ><button class="btn alt hid" id="inst">Install app</button>
+          <button class="btn" id="play">Play</button>
+          <button class="btn alt" id="levels">Levels</button>
+          <button class="btn alt" id="daily">Daily challenge</button>
+          <!-- Ball skins are temporarily disabled.
+          <button class="btn alt" id="open-skins">Ball skins</button> -->
+          <button class="btn alt hid" id="inst">Install app</button>
         </div>
       </div>
     </div>
@@ -75,6 +82,16 @@
         <button class="btn alt" id="back">Back</button>
       </div>
     </div>
+    <!-- Ball skins are temporarily disabled.
+    <div class="modal hid" id="skinm">
+      <div class="panel">
+        <h2>Ball skins</h2>
+        <p id="star-total"></p>
+        <div class="skin-list" id="skins"></div>
+        <button class="btn alt" id="skin-back">Back</button>
+      </div>
+    </div>
+    -->
     <div class="modal hid" id="psm">
       <div class="panel">
         <h2>Paused</h2>
@@ -106,5 +123,6 @@
       </div>
     </div>
     <script src="app.js"></script>
+    <script src="update.js?v=2"></script>
   </body>
 </html>
