@@ -114,9 +114,9 @@
       musicClock -= 0.3;
       var notes = [262, 330, 392, 330, 294, 349, 440, 349];
       var note = notes[musicStep % notes.length];
-      beep(note, 0.2, "sine", 0.018, null, "music");
+      beep(note, 0.2, "sine", 0.034, null, "music");
       if (musicStep % 4 === 0)
-        beep(note / 2, 0.24, "triangle", 0.012, null, "music");
+        beep(note / 2, 0.24, "triangle", 0.022, null, "music");
       musicStep++;
     }
   }
