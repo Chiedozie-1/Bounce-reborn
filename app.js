@@ -47,15 +47,21 @@
     dailyDate = null,
     dailySeed = null,
     dailyObjective = null,
+    settingsReturn = "stm",
     PI2 = 6.2832,
     TL = 40;
-  var save = { u: 1, s: {}, daily: {} };
+  var save = { u: 1, s: {}, daily: {}, audio: { music: 70, effects: 100 } };
   try {
     var sv = JSON.parse(localStorage.getItem("bouncereborn") || "null");
     if (sv && sv.u) {
       save = sv;
       save.s = save.s || {};
       save.daily = save.daily || {};
+      save.audio = save.audio || { music: 70, effects: 100 };
+      save.audio.music = Number(save.audio.music);
+      save.audio.effects = Number(save.audio.effects);
+      if (!Number.isFinite(save.audio.music)) save.audio.music = 70;
+      if (!Number.isFinite(save.audio.effects)) save.audio.effects = 100;
     }
   } catch (e) {}
   function persist() {
@@ -64,6 +70,14 @@
     } catch (e) {}
   }
 
+  function lockLandscape() {
+    if (!matchMedia("(pointer:coarse)").matches) return;
+    try {
+      if (screen.orientation && screen.orientation.lock)
+        screen.orientation.lock("landscape").catch(function () {});
+    } catch (e) {}
+  }
+  addEventListener("orientationchange", lockLandscape);
   function ac() {
     if (!AC) {
       try {
@@ -72,15 +86,17 @@
     }
     if (AC && AC.state === "suspended") AC.resume();
   }
-  function beep(f, d, t, v, f2) {
+  function beep(f, d, t, v, f2, category) {
     if (!AC || muted) return;
+    var volume = save.audio[category === "music" ? "music" : "effects"] / 100;
+    if (volume <= 0) return;
     var n = AC.currentTime,
       o = AC.createOscillator(),
       g = AC.createGain();
     o.type = t || "square";
     o.frequency.setValueAtTime(f, n);
     if (f2) o.frequency.exponentialRampToValueAtTime(f2, n + d);
-    g.gain.setValueAtTime(v || 0.05, n);
+    g.gain.setValueAtTime((v || 0.05) * volume, n);
     g.gain.exponentialRampToValueAtTime(0.001, n + d);
     o.connect(g);
     g.connect(AC.destination);
@@ -98,8 +114,9 @@
       musicClock -= 0.3;
       var notes = [262, 330, 392, 330, 294, 349, 440, 349];
       var note = notes[musicStep % notes.length];
-      beep(note, 0.2, "sine", 0.018);
-      if (musicStep % 4 === 0) beep(note / 2, 0.24, "triangle", 0.012);
+      beep(note, 0.2, "sine", 0.018, null, "music");
+      if (musicStep % 4 === 0)
+        beep(note / 2, 0.24, "triangle", 0.012, null, "music");
       musicStep++;
     }
   }
@@ -950,7 +967,7 @@
     };
   }
   function show(id) {
-    ["stm", "lvm", "psm", "wnm", "ovm"].forEach(function (m) {
+    ["stm", "lvm", "psm", "stgm", "wnm", "ovm"].forEach(function (m) {
       $(m).classList.toggle("hid", m !== id);
     });
   }
@@ -961,6 +978,7 @@
   }
   function start(n, fresh, challenge) {
     ac();
+    lockLandscape();
     var sc = G && !fresh ? G.score : 0,
       lv = G && !fresh ? G.lives : 3;
     dailyMode = !!challenge;
@@ -1004,6 +1022,7 @@
     keys.ax = 0;
   }
   function menu() {
+    lockLandscape();
     S = "menu";
     hud(false);
     dailyMode = false;
@@ -1082,6 +1101,39 @@
   $("back").onclick = function () {
     show("stm");
   };
+  function openSettings(returnModal) {
+    ac();
+    settingsReturn = returnModal;
+    $("music-volume").value = save.audio.music;
+    $("effects-volume").value = save.audio.effects;
+    $("music-volume-value").value = save.audio.music + "%";
+    $("effects-volume-value").value = save.audio.effects + "%";
+    show("stgm");
+  }
+  $("menu-settings").onclick = function () {
+    openSettings("stm");
+  };
+  $("pause-settings").onclick = function () {
+    openSettings("psm");
+  };
+  $("sg").onclick = function () {
+    if (S === "play") S = "pause";
+    openSettings(S === "pause" ? "psm" : "stm");
+  };
+  $("settings-back").onclick = function () {
+    persist();
+    show(settingsReturn);
+  };
+  $("music-volume").addEventListener("input", function (e) {
+    save.audio.music = Number(e.target.value);
+    $("music-volume-value").value = save.audio.music + "%";
+    persist();
+  });
+  $("effects-volume").addEventListener("input", function (e) {
+    save.audio.effects = Number(e.target.value);
+    $("effects-volume-value").value = save.audio.effects + "%";
+    persist();
+  });
   /*
   Ball skin menu is temporarily disabled.
   $("open-skins").onclick = function () {
@@ -1521,6 +1573,32 @@
     x.arcTo(px, py + h, px, py, r);
     x.arcTo(px, py, px + w, py, r);
     x.closePath();
+  }
+  function drawInstructionCard(lines, y, width, height, fontSize) {
+    var left = (VW - width) / 2,
+      gradient = x.createLinearGradient(0, y, 0, y + height),
+      lineHeight = fontSize + 4,
+      textY =
+        y + (height - (lines.length - 1) * lineHeight) / 2 + fontSize * 0.35;
+    gradient.addColorStop(0, "rgba(255,255,255,.18)");
+    gradient.addColorStop(1, "rgba(120,155,230,.08)");
+    x.shadowColor = "rgba(5,12,30,.32)";
+    x.shadowBlur = 18;
+    x.shadowOffsetY = 5;
+    x.fillStyle = gradient;
+    rr(left, y, width, height, 17);
+    x.fill();
+    x.shadowBlur = 0;
+    x.shadowOffsetY = 0;
+    x.lineWidth = 1.2;
+    x.strokeStyle = "rgba(255,255,255,.3)";
+    x.stroke();
+    x.fillStyle = "#fff";
+    x.textAlign = "center";
+    x.font = "500 " + fontSize + "px Fredoka,sans-serif";
+    lines.forEach(function (line, index) {
+      x.fillText(line, VW / 2, textY + index * lineHeight, width - 24);
+    });
   }
   function drawRidge(color, base, height, parallax) {
     x.fillStyle = color;
@@ -1975,38 +2053,29 @@
                   : touchControls
                     ? "Portal open! Roll into it to finish."
                     : "Portal open! Reach it to finish.";
-      var hintWidth = Math.max(1, Math.min(VW - 32, 540)),
-        hintX = (VW - hintWidth) / 2,
-        hintY = 116,
-        hintHeight = 46,
-        hintGradient = x.createLinearGradient(0, hintY, 0, hintY + hintHeight);
-      hintGradient.addColorStop(0, "rgba(255,255,255,.18)");
-      hintGradient.addColorStop(1, "rgba(120,155,230,.08)");
-      x.shadowColor = "rgba(5,12,30,.32)";
-      x.shadowBlur = 18;
-      x.shadowOffsetY = 5;
-      x.fillStyle = hintGradient;
-      rr(hintX, hintY, hintWidth, hintHeight, 17);
-      x.fill();
-      x.shadowBlur = 0;
-      x.shadowOffsetY = 0;
-      x.lineWidth = 1.2;
-      x.strokeStyle = "rgba(255,255,255,.3)";
-      x.stroke();
-      x.fillStyle = "#fff";
-      x.textAlign = "center";
-      x.font = "500 16px Fredoka,sans-serif";
-      x.fillText(hint, VW / 2, 145, hintWidth - 24);
+      drawInstructionCard(
+        [hint],
+        116,
+        Math.max(1, Math.min(VW - 32, 540)),
+        46,
+        16,
+      );
     }
     if (dailyMode && dailyObjective) {
-      var objectiveWidth = Math.max(1, Math.min(VW - 24, 620));
-      x.fillStyle = "rgba(16,22,43,.86)";
-      rr((VW - objectiveWidth) / 2, 116, objectiveWidth, 40, 12);
-      x.fill();
-      x.fillStyle = "#fff";
-      x.textAlign = "center";
-      x.font = "500 18px Fredoka,sans-serif";
-      x.fillText(dailyObjectiveStatus(), VW / 2, 142, objectiveWidth - 16);
+      var objectiveText = dailyObjectiveStatus(),
+        objectiveLines = touchControls
+          ? [
+              dailyObjective.title,
+              objectiveText.slice(dailyObjective.title.length + 2),
+            ]
+          : [objectiveText];
+      drawInstructionCard(
+        objectiveLines,
+        116,
+        Math.max(1, Math.min(VW - 32, 540)),
+        touchControls ? 58 : 46,
+        touchControls ? 14 : 16,
+      );
     }
     x.shadowBlur = 0;
     if (G.msg > 0) {

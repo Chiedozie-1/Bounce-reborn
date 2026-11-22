@@ -79,6 +79,13 @@ h1 {
     0 5px 0 #8a1c1c,
     0 10px 24px rgba(0, 0, 0, 0.4);
 }
+.byline {
+  margin-top: -10px;
+  color: var(--mut);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+}
 h2 {
   margin: 0;
   font-size: 34px;
@@ -244,6 +251,35 @@ p {
   font: inherit;
   font-size: 16px;
   cursor: pointer;
+}
+.settings-panel {
+  max-width: 480px;
+  gap: 22px;
+}
+.volume-setting {
+  width: 100%;
+  text-align: left;
+}
+.volume-setting label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.volume-row {
+  display: grid;
+  grid-template-columns: 1fr 54px;
+  align-items: center;
+  gap: 12px;
+}
+.volume-row input {
+  width: 100%;
+  accent-color: var(--acc);
+}
+.volume-row output {
+  color: var(--acc2);
+  font-weight: 700;
+  text-align: right;
 }
 .tb {
   position: fixed;
