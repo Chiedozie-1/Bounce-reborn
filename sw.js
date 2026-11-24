@@ -1,8 +1,8 @@
-const CACHE = "bounce-reborn-v14";
+const CACHE = "bounce-reborn-v20";
 const CORE = [
   "./",
   "index.html",
-  "styles.css",
+  "styles.css?v=19",
   "app.js",
   "update.js?v=2",
   "manifest.webmanifest",

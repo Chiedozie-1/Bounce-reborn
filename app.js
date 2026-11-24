@@ -50,10 +50,17 @@
     settingsReturn = "stm",
     PI2 = 6.2832,
     TL = 40;
-  var save = { u: 1, s: {}, daily: {}, audio: { music: 70, effects: 100 } };
+  var save = {
+    u: 1,
+    s: {},
+    daily: {},
+    audio: { music: 70, effects: 100 },
+  };
+  var hasExistingSave = false;
   try {
     var sv = JSON.parse(localStorage.getItem("bouncereborn") || "null");
     if (sv && sv.u) {
+      hasExistingSave = true;
       save = sv;
       save.s = save.s || {};
       save.daily = save.daily || {};
@@ -64,6 +71,244 @@
       if (!Number.isFinite(save.audio.effects)) save.audio.effects = 100;
     }
   } catch (e) {}
+  function utcDate() {
+    return new Date().toISOString().slice(0, 10);
+  }
+  function normalizeEconomy() {
+    if (!save.eco) {
+      save.eco = !hasExistingSave
+        ? { balance: 200, ledger: [] }
+        : { balance: 0, ledger: [] };
+    }
+    save.eco.balance = Number(save.eco.balance);
+    if (!Number.isFinite(save.eco.balance) || save.eco.balance < 0)
+      save.eco.balance = 0;
+    save.eco.ledger = Array.isArray(save.eco.ledger) ? save.eco.ledger : [];
+    save.eco.levels = save.eco.levels || {};
+    save.eco.rings = save.eco.rings || {};
+    save.eco.loginDate = save.eco.loginDate || "";
+    save.eco.achievements = save.eco.achievements || {};
+    save.eco.owned = save.eco.owned || ["classic"];
+    save.eco.equipped = save.eco.equipped || {};
+    save.eco.equipped.ball = save.eco.equipped.ball || "classic";
+    save.eco.power = save.eco.power || { torch: 0, shield: 0 };
+    save.eco.power.torch = Number(save.eco.power.torch) || 0;
+    save.eco.power.shield = Number(save.eco.power.shield) || 0;
+    save.eco.boxes = Array.isArray(save.eco.boxes)
+      ? save.eco.boxes.slice(0, 3)
+      : [null, null, null];
+    while (save.eco.boxes.length < 3) save.eco.boxes.push(null);
+    save.eco.pendingBox = !!save.eco.pendingBox;
+    save.eco.dailyRewards = save.eco.dailyRewards || {};
+    save.u = save.u || 1;
+  }
+  normalizeEconomy();
+  function grantOrSpend(key, amount, type, details) {
+    var ledgerKey = "bc:" + key;
+    if (save.eco.ledger.some(function (entry) {
+      return entry.key === ledgerKey;
+    })) return false;
+    amount = Math.trunc(Number(amount) || 0);
+    if (amount < 0 && save.eco.balance + amount < 0) return false;
+    save.eco.balance = Math.max(0, save.eco.balance + amount);
+    save.eco.ledger.push({
+      key: ledgerKey,
+      amount: amount,
+      type: type,
+      details: details || {},
+      at: Date.now(),
+    });
+    persist();
+    updateBalances();
+    return true;
+  }
+  function awardLogin() {
+    var date = utcDate();
+    if (save.eco.loginDate === date) return 0;
+    if (grantOrSpend("login:" + date, 100, "login", { date: date })) {
+      save.eco.loginDate = date;
+      persist();
+      return 100;
+    }
+    return 0;
+  }
+  function claimAchievement(id, title, reward) {
+    var catalogReward = Math.max(400, Math.min(1000, Math.trunc(Number(reward) || 400)));
+    if (save.eco.achievements[id]) return false;
+    if (!grantOrSpend("achievement:" + id, catalogReward, "achievement", { achievementId:id, title:title }))
+      return false;
+    save.eco.achievements[id] = { rewardPaid:true, at:Date.now() };
+    persist();
+    return true;
+  }
+  var BALL_CATALOG = [
+    { id:"classic", name:"Classic", rarity:"Common", price:500, colors:["#fff0ed","#ff9a8a","#b81c1c"], preview:"●" },
+    { id:"ocean", name:"Ocean", rarity:"Common", price:500, colors:["#d6fbff","#28a9df","#114b9b"], preview:"●" },
+    { id:"mint", name:"Mint", rarity:"Common", price:500, colors:["#d0ffe1","#43d69b","#167359"], preview:"●" },
+    { id:"sunset", name:"Sunset", rarity:"Uncommon", price:1000, colors:["#fff0a0","#ff9c32","#bc3b2b"], preview:"●" },
+    { id:"violet", name:"Violet", rarity:"Epic", price:5000, colors:["#f1cbff","#a55be0","#532080"], preview:"●" },
+    { id:"cosmic", name:"Cosmic", rarity:"Legendary", price:10000, colors:["#d7e1ff","#5d6eff","#111b66"], preview:"●" }
+  ];
+  var TRAIL_CATALOG = [{ id:"starlight", name:"Starlight Trail", rarity:"Rare", price:2000, preview:"✦", colors:["#251c50","#ffd23f"] }];
+  var BOUNCE_CATALOG = [{ id:"spark", name:"Spark Ring", rarity:"Rare", price:3000, preview:"◉", colors:["#362060","#ff6fa8"] }];
+  var PORTAL_CATALOG = [{ id:"aurora", name:"Aurora Portal", rarity:"Epic", price:3000, preview:"◎", colors:["#14335a","#78e6c2"] }];
+  function updateBalances() {
+    if ($("dashboard-balance"))
+      $("dashboard-balance").textContent = "◯ " + save.eco.balance + " BC";
+    if ($("shop-balance"))
+      $("shop-balance").textContent = "◯ " + save.eco.balance + " BC";
+  }
+  function updateDashboard() {
+    var world = Math.min(MAX_LEVEL, Math.max(1, Number(save.u) || 1));
+    $("dashboard-level").textContent = "World " + world + " / " + MAX_LEVEL;
+    $("dashboard-world").textContent = TH[world - 1].n;
+    $("dashboard-progress").style.width =
+      Math.round(((world - 1) / (MAX_LEVEL - 1)) * 100) + "%";
+  }
+  function formatTime(ms) {
+    ms = Math.max(0, ms);
+    var s = Math.ceil(ms / 1000),
+      h = Math.floor(s / 3600),
+      m = Math.floor((s % 3600) / 60),
+      r = s % 60;
+    return (h < 10 ? "0" : "") + h + ":" +
+      (m < 10 ? "0" : "") + m + ":" +
+      (r < 10 ? "0" : "") + r;
+  }
+  function placePendingBox() {
+    if (!save.eco.pendingBox) return;
+    for (var i = 0; i < 3; i++) {
+      if (!save.eco.boxes[i]) {
+        var now = Date.now();
+        save.eco.boxes[i] = { id:"box-" + now + "-" + i, earnedAt:now, unlockAt:now + 10800000 };
+        save.eco.pendingBox = false;
+        persist();
+        break;
+      }
+    }
+  }
+  function earnGiftBox(challengeKey) {
+    if (save.eco.dailyRewards[challengeKey]) return false;
+    save.eco.dailyRewards[challengeKey] = true;
+    var now = Date.now();
+    for (var i = 0; i < 3; i++) {
+      if (!save.eco.boxes[i]) {
+        save.eco.boxes[i] = { id:"box-" + now + "-" + i, earnedAt:now, unlockAt:now + 10800000 };
+        persist();
+        return true;
+      }
+    }
+    save.eco.pendingBox = true;
+    persist();
+    return true;
+  }
+  function renderGiftSlots() {
+    if (!$("dashboard-gift-slots")) return;
+    placePendingBox();
+    $("dashboard-gift-slots").innerHTML = save.eco.boxes.map(function (box, i) {
+      if (!box) return '<div class="gift-slot"><span>Gift Box Slot ' + (i + 1) + '<br><small>Empty</small></span></div>';
+      var remaining = box.unlockAt - Date.now();
+      if (remaining <= 0)
+        return '<button class="gift-slot ready" data-box="' + i + '"><span>Gift Box<br><small>Ready / Open</small></span></button>';
+      return '<div class="gift-slot"><span>Gift Box<br><small>' + formatTime(remaining) + '</small></span></div>';
+    }).join("") +
+      (save.eco.pendingBox ? '<p class="pending-box">Gift Box storage is full. Open a slot to receive the pending box.</p>' : "");
+  }
+  function openGiftBox(index) {
+    var box = save.eco.boxes[index];
+    if (!box || box.unlockAt > Date.now()) return;
+    if (!grantOrSpend("box:" + box.id, 500, "gift_box", { boxId:box.id })) return;
+    var commons = BALL_CATALOG.filter(function (skin) { return skin.rarity === "Common"; });
+    var skin = commons.find(function (item) { return save.eco.owned.indexOf(item.id) < 0; });
+    var reveal;
+    if (skin) {
+      save.eco.owned.push(skin.id);
+      reveal = "+" + 500 + " BC + " + skin.name + " (" + skin.rarity + ")";
+    } else {
+      grantOrSpend("box-duplicate:" + box.id, 250, "duplicate_conversion", { boxId:box.id });
+      reveal = "+500 BC + +250 BC duplicate conversion";
+    }
+    save.eco.boxes[index] = null;
+    persist();
+    placePendingBox();
+    renderGiftSlots();
+    $("shop-message").textContent = "Gift box reward: " + reveal;
+    alert(reveal);
+  }
+  var shopCategory = "ball";
+  function shopCatalog(category) {
+    if (category === "trail") return TRAIL_CATALOG;
+    if (category === "bounce") return BOUNCE_CATALOG;
+    if (category === "portal") return PORTAL_CATALOG;
+    return BALL_CATALOG;
+  }
+  function renderShop() {
+    updateBalances();
+    var category = shopCategory,
+      catalog = category === "power"
+        ? [
+            { id:"torch", name:"Torchlight", rarity:"Pack", price:4000, preview:"🔥", colors:["#3f2508","#ffd23f"], quantity:3 },
+            { id:"shield", name:"Wind Shield", rarity:"Pack", price:4000, preview:"🛡", colors:["#17345a","#78aaff"], quantity:4 }
+          ]
+        : shopCatalog(category);
+    $("shop-grid").innerHTML = catalog.map(function (item) {
+      var owned = save.eco.owned.indexOf(item.id) >= 0,
+        equipped = category === "ball"
+          ? save.eco.equipped.ball === item.id
+          : save.eco.equipped[category] === item.id,
+        state = owned ? (equipped ? "Equipped" : "Owned") : item.price + " BC";
+      var previewA = item.colors && item.colors[0] ? item.colors[0] : "#24304f";
+      var previewB = item.colors && item.colors[1] ? item.colors[1] : "#4d7cff";
+      return '<article class="shop-item" style="--preview-a:' + previewA + ';--preview-b:' + previewB + '">' +
+        '<div class="shop-item-preview">' + item.preview + '</div>' +
+        '<strong>' + item.name + '</strong>' +
+        '<span class="shop-item-meta">' + item.rarity + (item.quantity ? " · " + item.quantity + " charges" : "") + '</span>' +
+        '<button class="btn ' + (owned && category === "ball" ? "alt" : "") + '" data-category="' + category +
+        '" data-item="' + item.id + '"' + (owned && equipped ? " disabled" : "") + '>' +
+        (owned ? (equipped ? "Equipped" : "Equip") : "Buy " + state) + '</button></article>';
+    }).join("");
+  }
+  function buyOrEquip(category, id) {
+    if (category === "power") {
+      var pack = id === "torch" ? { quantity:3, charges:"torch" } : { quantity:4, charges:"shield" };
+      if (!grantOrSpend("power-pack:" + id + ":" + Date.now(), -4000, "shop_spend", { itemId:id })) {
+        $("shop-message").textContent = "Insufficient BC. You need 4,000 BC.";
+        return;
+      }
+      save.eco.power[pack.charges] += pack.quantity;
+      persist();
+      $("shop-message").textContent = pack.quantity + " " + (id === "torch" ? "Torchlight" : "Wind Shield") + " charges added.";
+      renderShop();
+      return;
+    }
+    var catalog = shopCatalog(category),
+      item = catalog.find(function (entry) { return entry.id === id; });
+    if (!item) return;
+    if (category === "ball" && save.eco.owned.indexOf(id) >= 0) {
+      save.eco.equipped.ball = id;
+      persist();
+      $("shop-message").textContent = item.name + " equipped.";
+      renderShop();
+      return;
+    }
+    if (save.eco.owned.indexOf(id) >= 0) {
+      save.eco.equipped[category] = id;
+      persist();
+      $("shop-message").textContent = item.name + " equipped.";
+      renderShop();
+      return;
+    }
+    if (save.eco.balance < item.price) {
+      $("shop-message").textContent = "Insufficient BC. Shortfall: " + (item.price - save.eco.balance) + " BC.";
+      return;
+    }
+    if (!grantOrSpend("purchase:" + category + ":" + id + ":" + item.price, -item.price, "shop_spend", { itemId:id, category:category })) return;
+    save.eco.owned.push(id);
+    save.eco.equipped[category] = id;
+    persist();
+    $("shop-message").textContent = item.name + " purchased and equipped.";
+    renderShop();
+  }
   function persist() {
     try {
       localStorage.setItem("bouncereborn", JSON.stringify(save));
@@ -612,7 +857,7 @@
     };
   }
   function getDailyChallenge() {
-    var date = new Date().toISOString().slice(0, 10),
+    var date = utcDate(),
       hash = 2166136261;
     for (var i = 0; i < date.length; i++)
       hash = Math.imul(hash ^ date.charCodeAt(i), 16777619);
@@ -938,7 +1183,7 @@
       if (target > 0)
         return {
           id: id,
-          title: "Activate " + target + " spring pads",
+          title: "Activate " + target + " different jump pads",
           target: target,
         };
       id = "flawless";
@@ -967,7 +1212,7 @@
     };
   }
   function show(id) {
-    ["stm", "lvm", "psm", "stgm", "wnm", "ovm"].forEach(function (m) {
+    ["stm", "lvm", "shopm", "psm", "stgm", "wnm", "ovm"].forEach(function (m) {
       $(m).classList.toggle("hid", m !== id);
     });
   }
@@ -1005,6 +1250,12 @@
       powerups: 0,
       checkpoints: 0,
       springHits: 0,
+      ringEarned: 0,
+      torchActive: 0,
+      shieldActive: 0,
+      trailTimer: 0,
+      bounceEffectTimer: 0,
+      runId: Date.now() + "-" + Math.random().toString(36).slice(2),
     };
     B = newBall(100, 480);
     P = [];
@@ -1014,6 +1265,7 @@
     S = "play";
     show(null);
     $("ctl").classList.remove("hid");
+    updatePowerHud();
     if (touchControls)
       ["js", "tj"].forEach(function (i) {
         $(i).classList.remove("hid");
@@ -1023,6 +1275,7 @@
   }
   function menu() {
     lockLandscape();
+    awardLogin();
     S = "menu";
     hud(false);
     dailyMode = false;
@@ -1047,9 +1300,12 @@
     B = newBall(100, 480);
     P = [];
     show("stm");
+    updateBalances();
+    updateDashboard();
+    renderGiftSlots();
     var challenge = getDailyChallenge(),
       dailyBest = save.daily[challenge.date];
-    $("daily").textContent = dailyBest
+    $("daily").querySelector("strong").textContent = dailyBest
       ? "Daily · Best " + dailyBest
       : "Daily challenge";
   }
@@ -1062,8 +1318,36 @@
       show(null);
     }
   }
+  var selectedLevel = null,
+    levelParTimes = {};
+  function parTimeForLevel(level) {
+    if (levelParTimes[level]) return levelParTimes[level];
+    var previousLevel = lvN;
+    gen(level);
+    var parTime = Lw / TL / 3.2;
+    gen(previousLevel);
+    levelParTimes[level] = parTime;
+    return parTime;
+  }
+  function selectLevel(level, button) {
+    selectedLevel = level;
+    document.querySelectorAll(".lv").forEach(function (item) {
+      item.classList.toggle("selected", item === button);
+    });
+    $("level-prompt").classList.add("hid");
+    $("level-details").classList.remove("hid");
+    $("level-objective-title").textContent =
+      "3-star objectives · World " + level + ": " + TH[level - 1].n;
+    $("level-par-time").textContent =
+      Number(parTimeForLevel(level).toFixed(4)) + " seconds";
+    $("start-level").textContent = "Start " + TH[level - 1].n;
+    $("level-details").scrollIntoView({ behavior:"smooth", block:"nearest" });
+  }
   function buildLevels() {
     var h = "";
+    selectedLevel = null;
+    $("level-prompt").classList.remove("hid");
+    $("level-details").classList.add("hid");
     for (var i = 1; i <= MAX_LEVEL; i++) {
       var s = save.s[i] || 0,
         st = "";
@@ -1085,8 +1369,12 @@
   }
   $("lvs").addEventListener("click", function (e) {
     var b = e.target.closest(".lv");
-    if (b && !b.disabled) start(+b.dataset.n, true);
+    if (b && !b.disabled) selectLevel(+b.dataset.n, b);
   });
+  $("start-level").onclick = function () {
+    if (selectedLevel && selectedLevel <= save.u)
+      start(selectedLevel, true);
+  };
   $("play").onclick = function () {
     start(Math.min(save.u, MAX_LEVEL), true);
   };
@@ -1098,6 +1386,37 @@
     buildLevels();
     show("lvm");
   };
+  $("shop").onclick = function () {
+    shopCategory = "ball";
+    $("shop-message").textContent = "";
+    renderShop();
+    show("shopm");
+  };
+  $("shop-back").onclick = function () {
+    show("stm");
+  };
+  $("shop-tabs").addEventListener("click", function (e) {
+    var tab = e.target.closest(".shop-tab");
+    if (!tab) return;
+    document.querySelectorAll(".shop-tab").forEach(function (button) {
+      button.classList.toggle("active", button === tab);
+    });
+    shopCategory = tab.dataset.category;
+    $("shop-message").textContent = "";
+    renderShop();
+  });
+  $("shop-grid").addEventListener("click", function (e) {
+    var button = e.target.closest("button[data-item]");
+    if (!button || button.disabled) return;
+    buyOrEquip(button.dataset.category, button.dataset.item);
+  });
+  $("dashboard-gift-slots").addEventListener("click", function (e) {
+    var slot = e.target.closest("[data-box]");
+    if (slot) openGiftBox(Number(slot.dataset.box));
+  });
+  setInterval(function () {
+    if (S === "menu") renderGiftSlots();
+  }, 1000);
   $("back").onclick = function () {
     show("stm");
   };
@@ -1159,6 +1478,30 @@
     muted = !muted;
     $("mb").textContent = muted ? "✕" : "♪";
   };
+  function updatePowerHud() {
+    var torch = save.eco.power.torch || 0,
+      shield = save.eco.power.shield || 0;
+    $("torch-count").textContent = torch;
+    $("shield-count").textContent = shield;
+    $("torch-button").classList.toggle("hid", S !== "play" || torch <= 0);
+    $("shield-button").classList.toggle("hid", S !== "play" || shield <= 0);
+    $("torch-button").classList.toggle("active", !!G && G.torchActive > 0);
+    $("shield-button").classList.toggle("active", !!G && G.shieldActive > 0);
+  }
+  $("torch-button").onclick = function () {
+    if (S !== "play" || !G || G.torchActive > 0 || save.eco.power.torch <= 0) return;
+    save.eco.power.torch--;
+    G.torchActive = 5;
+    persist();
+    updatePowerHud();
+  };
+  $("shield-button").onclick = function () {
+    if (S !== "play" || !G || G.shieldActive > 0 || save.eco.power.shield <= 0) return;
+    save.eco.power.shield--;
+    G.shieldActive = 3;
+    persist();
+    updatePowerHud();
+  };
   $("nx").onclick = function () {
     if (lvN < MAX_LEVEL) start(lvN + 1, false);
   };
@@ -1176,6 +1519,7 @@
         : null,
     );
   };
+  $("daily-continue").onclick = menu;
   $("rt").onclick = function () {
     start(
       lvN,
@@ -1263,7 +1607,7 @@
         break;
       case "spring-run":
         status =
-          G.springHits + "/" + dailyObjective.target + " spring pads activated";
+          G.springHits + "/" + dailyObjective.target + " different jump pads activated";
         break;
     }
     return dailyObjective.title + ": " + status;
@@ -1282,6 +1626,14 @@
   }
   function lose() {
     if (G.inv > 0 || S !== "play") return;
+    if (G.shieldActive > 0) {
+      G.shieldActive = 0;
+      G.inv = 1.2;
+      vibrate(18);
+      beep(300, 0.2, "triangle", 0.08, 150);
+      burst(B.x, B.y, 14, "#78aaff");
+      return;
+    }
     if (G.sh > 0) {
       G.sh = 0;
       G.inv = 1;
@@ -1329,6 +1681,9 @@
   function win() {
     S = "win";
     hud(false);
+    var levelEarned = 0,
+      firstEarned = 0,
+      giftBoxAwarded = false;
     var par = Lw / TL / 3.2,
       st = 1 + (G.deaths === 0 ? 1 : 0) + (G.t < par ? 1 : 0),
       bonus = Math.max(0, Math.floor((par * 1.5 - G.t) * 10)) + st * 100;
@@ -1339,17 +1694,54 @@
         Number(save.daily[dailyDate]) || 0,
         G.score,
       );
+      giftBoxAwarded = earnGiftBox("challenge:" + dailyDate);
     } else {
       save.u = Math.min(MAX_LEVEL, Math.max(save.u, lvN + 1));
-      save.s[lvN] = Math.max(save.s[lvN] || 0, st);
+      var existingStars = save.s[lvN] || 0;
+      save.s[lvN] = Math.max(existingStars, st);
+      var levelState = save.eco.levels[lvN] || {
+        firstPaid:false,
+        paidTier:0,
+      };
+      var priorRecord = levelState.paidTier > 0 || existingStars > 0;
+      var tierReward = st === 1 ? 50 : st === 2 ? 150 : 250;
+      var oldExistingTier = existingStars === 1 ? 50 : existingStars === 2 ? 150 : existingStars === 3 ? 250 : 0;
+      var alreadyPaidTier = levelState.paidTier || oldExistingTier;
+      var completedKey = "level:" + lvN + ":run:" + G.runId;
+      if (!save.eco.ledger.some(function (entry) { return entry.key === "bc:" + completedKey; })) {
+        var tierDelta = tierReward > alreadyPaidTier ? tierReward - alreadyPaidTier : 0;
+        if (tierDelta > 0 && grantOrSpend(completedKey + ":tier", tierDelta, "level_reward", { levelId:lvN, stars:st }))
+          levelEarned = tierDelta;
+        if (!levelState.firstPaid && !priorRecord) {
+          if (grantOrSpend(completedKey + ":first", 50, "first_completion", { levelId:lvN })) {
+            firstEarned = 50;
+            levelState.firstPaid = true;
+          }
+        }
+        levelState.paidTier = Math.max(alreadyPaidTier, tierReward);
+        save.eco.levels[lvN] = levelState;
+      }
     }
     persist();
     var s = "";
     for (var j = 0; j < 3; j++) s += j < st ? "★" : "☆";
     $("st").textContent = s;
+    $("st").classList.toggle("hid", dailyMode);
+    $("ws").classList.toggle("hid", dailyMode);
+    $("daily-gift-result").classList.toggle("hid", !dailyMode);
+    $("rp").classList.toggle("hid", dailyMode);
+    $("daily-continue").classList.toggle("hid", !dailyMode);
     $("wt").textContent = dailyMode
-      ? "Daily challenge complete!"
+      ? "Congratulations!"
       : th().n + " cleared!";
+    $("daily-gift-title").textContent = giftBoxAwarded
+      ? "Gift Box earned!"
+      : "Today's Gift Box already claimed";
+    $("daily-gift-copy").textContent = giftBoxAwarded
+      ? save.eco.pendingBox
+        ? "Your box is pending storage. Its 3-hour unlock timer starts when a slot opens."
+        : "Your box is in storage. Its 3-hour unlock timer has started."
+      : "Check your dashboard storage for today's reward.";
     $("ws").textContent = dailyMode
       ? dailyDate +
         " · Level " +
@@ -1357,14 +1749,24 @@
         " · Score " +
         G.score +
         " · Best today " +
-        save.daily[dailyDate]
+        save.daily[dailyDate] +
+        (giftBoxAwarded
+          ? "\nGift Box earned! Check your dashboard storage."
+          : "\nToday's Gift Box was already claimed.")
       : "Time " +
         Math.floor(G.t) +
         "s · Bonus +" +
         bonus +
         " · Score " +
         G.score +
-        " · Extra life earned";
+        " · Extra life earned\nLevel completion: +" +
+        levelEarned +
+        " BC" +
+        (firstEarned ? "\nFirst completion bonus: +" + firstEarned + " BC" : "") +
+        (G.ringEarned ? "\nRings collected: +" + G.ringEarned + " BC" : "") +
+        "\nTotal reward: +" +
+        (levelEarned + firstEarned + G.ringEarned) +
+        " BC";
     $("nx").classList.toggle("hid", dailyMode || lvN >= MAX_LEVEL);
     show("wnm");
     [523, 659, 784, 1046].forEach(function (f, i) {
@@ -1400,7 +1802,12 @@
       B.vy -= (1 + e) * vn * ny;
       if (-vn > 260) {
         B.sq = Math.min(0.35, -vn / 2400);
-        burst(B.x, B.y + B.r, 5, "#ffffff");
+        if (save.eco.equipped.bounce === "spark") {
+          G.bounceEffectTimer = 0.32;
+          burst(B.x, B.y + B.r, 9, "#ff6fa8");
+        } else {
+          burst(B.x, B.y + B.r, 5, "#ffffff");
+        }
         vibrate(12);
         beep(140 + -vn / 10, 0.07, "sine", 0.05);
       }
@@ -1473,16 +1880,49 @@
   }
   function logic(dt) {
     G.t += dt;
+    var torchWasActive = G.torchActive > 0,
+      shieldWasActive = G.shieldActive > 0;
+    if (G.torchActive > 0) G.torchActive -= dt;
+    if (G.shieldActive > 0) G.shieldActive -= dt;
+    if (G.trailTimer > 0) G.trailTimer -= dt;
+    if (G.bounceEffectTimer > 0) G.bounceEffectTimer -= dt;
+    if (
+      save.eco.equipped.trail === "starlight" &&
+      G.trailTimer <= 0 &&
+      Math.abs(B.vx) + Math.abs(B.vy) > 100 &&
+      P.length < 300
+    ) {
+      G.trailTimer = 0.07;
+      P.push({
+        x: B.x - B.vx * 0.02,
+        y: B.y - B.vy * 0.02,
+        vx: -B.vx * 0.08,
+        vy: -B.vy * 0.08,
+        l: 0.45,
+        c: "#ffd23f",
+        s: 5,
+        trail: true,
+      });
+    }
+    if ((torchWasActive && G.torchActive <= 0) || (shieldWasActive && G.shieldActive <= 0))
+      updatePowerHud();
     if (G.inv > 0) G.inv -= dt;
     if (G.sh > 0) G.sh -= dt;
     if (G.pj > 0) G.pj -= dt;
     if (G.intro > 0) G.intro -= dt;
     if (G.msg > 0) G.msg -= dt;
-    rg.forEach(function (q) {
+    rg.forEach(function (q, ringIndex) {
       if (!q.c && near(q, B.r + 13)) {
         q.c = 1;
         G.rings++;
         G.score += 50;
+        var ringKey = "level-" + lvN + "-ring-" + ringIndex;
+        if (!save.eco.rings[ringKey]) {
+          if (grantOrSpend(ringKey, 5, "ring", { levelId:lvN, ringIndex:ringIndex }))
+            G.ringEarned += 5;
+        }
+        save.eco.rings[ringKey] = true;
+        persist();
         burst(q.x, q.y, 8, "#ffd23f");
         beep(1200, 0.1, "sine", 0.07, 1800);
       }
@@ -1521,7 +1961,19 @@
         B.coy = 0;
         s.t = 0.25;
         B.sq = 0.3;
-        G.springHits++;
+        if (save.eco.equipped.bounce === "spark") {
+          G.bounceEffectTimer = 0.35;
+          burst(B.x, B.y + B.r, 10, "#ff6fa8");
+        }
+        if (
+          dailyMode &&
+          dailyObjective &&
+          dailyObjective.id === "spring-run" &&
+          !s.dailyObjectiveCounted
+        ) {
+          s.dailyObjectiveCounted = true;
+          G.springHits++;
+        }
         vibrate(20);
         beep(300, 0.3, "sine", 0.09, 1300);
       }
@@ -1960,7 +2412,16 @@
     P.forEach(function (q) {
       x.globalAlpha = Math.min(1, q.l * 2.5);
       x.fillStyle = q.c;
-      x.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+      if (q.trail) {
+        x.shadowColor = q.c;
+        x.shadowBlur = 9;
+        x.beginPath();
+        x.arc(q.x, q.y, q.s / 2, 0, PI2);
+        x.fill();
+        x.shadowBlur = 0;
+      } else {
+        x.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+      }
     });
     x.globalAlpha = 1;
     if (S !== "menu" && !(G.inv > 0 && Math.floor(G.t * 14) % 2)) {
@@ -1979,11 +2440,28 @@
         x.arc(0, 0, B.r + 7, 0, PI2);
         x.stroke();
       }
+      if (G.shieldActive > 0) {
+        x.strokeStyle = "rgba(120,170,255,.95)";
+        x.lineWidth = 5;
+        x.beginPath();
+        x.arc(0, 0, B.r + 10, 0, PI2);
+        x.stroke();
+      }
+      if (G.bounceEffectTimer > 0) {
+        x.strokeStyle = "rgba(255,111,168,.95)";
+        x.lineWidth = 3;
+        x.beginPath();
+        x.arc(0, 0, B.r + 14, 0, PI2);
+        x.stroke();
+      }
       x.rotate(B.rot);
+      var ballSkin = BALL_CATALOG.find(function (skin) {
+        return skin.id === save.eco.equipped.ball;
+      }) || BALL_CATALOG[0];
       var bg = x.createRadialGradient(-5, -6, 2, 0, 0, B.r);
-      bg.addColorStop(0, "#ff9a8a");
-      bg.addColorStop(0.55, "#ff3b3b");
-      bg.addColorStop(1, "#a01616");
+      bg.addColorStop(0, ballSkin.colors[0]);
+      bg.addColorStop(0.55, ballSkin.colors[1]);
+      bg.addColorStop(1, ballSkin.colors[2]);
       x.fillStyle = bg;
       x.beginPath();
       x.arc(0, 0, B.r, 0, PI2);
@@ -1996,7 +2474,7 @@
       x.restore();
     }
     x.restore();
-    if (t.dark && S !== "menu") {
+    if (t.dark && S !== "menu" && !(G && G.torchActive > 0)) {
       var dg = x.createRadialGradient(B.x - cam, B.y, 30, B.x - cam, B.y, 250);
       dg.addColorStop(0, "rgba(3,4,16,0)");
       dg.addColorStop(1, "rgba(3,4,16,.96)");
@@ -2021,11 +2499,13 @@
     x.fillText("Score " + G.score, VW / 2, 40);
     x.font = "500 18px Fredoka,sans-serif";
     x.fillText("Level " + lvN + " · " + Math.floor(G.t) + "s", VW / 2, 66);
-    if (G.pj > 0 || G.sh > 0) {
+    if (G.pj > 0 || G.sh > 0 || G.torchActive > 0 || G.shieldActive > 0) {
       x.textAlign = "left";
       x.fillText(
         (G.sh > 0 ? "Shield " + Math.ceil(G.sh) + "s  " : "") +
-          (G.pj > 0 ? "Double jump " + Math.ceil(G.pj) + "s" : ""),
+          (G.pj > 0 ? "Double jump " + Math.ceil(G.pj) + "s  " : "") +
+          (G.torchActive > 0 ? "Torchlight " + Math.ceil(G.torchActive) + "s  " : "") +
+          (G.shieldActive > 0 ? "Wind Shield " + Math.ceil(G.shieldActive) + "s" : ""),
         20,
         104,
       );
@@ -2084,7 +2564,7 @@
       x.fillStyle = "#ffd23f";
       x.fillText(
         dailyMode
-          ? "Complete the daily objective to open the portal!"
+          ? "Complete the objective, then reach the portal for your Gift Box!"
           : "Collect all the rings to open the portal!",
         VW / 2,
         180,

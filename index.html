@@ -26,7 +26,7 @@
       href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=19" />
   </head>
   <body>
     <canvas id="c"></canvas>
@@ -38,6 +38,12 @@
       <button class="ib" id="pb" aria-label="Pause">❚❚</button
       ><button class="ib" id="mb" aria-label="Mute sound">♪</button
       ><button class="ib" id="sg" aria-label="Open settings">⚙</button>
+      <button class="power-button hid" id="torch-button" aria-label="Activate Torchlight">
+        <span>🔥</span><small id="torch-count">0</small>
+      </button>
+      <button class="power-button hid" id="shield-button" aria-label="Activate Wind Shield">
+        <span>🛡</span><small id="shield-count">0</small>
+      </button>
     </div>
     <div class="hid" id="js" aria-label="Movement joystick">
       <div id="jk"></div>
@@ -59,42 +65,100 @@
     </button>
 
     <div class="modal" id="stm">
-      <div class="panel">
-        <h1>Bounce Reborn</h1>
-        <!-- <p class="byline">BY NIC TECH</p> -->
-        <p>
-          Roll, bounce and spring through 30 changing worlds. Collect every ring
-          to open the portal.
-        </p>
-        <!-- <p>Move: arrows or A/D · Jump: Space or W · Pause: P</p> -->
-        <div class="row">
-          <button class="btn" id="play">Play</button>
-          <button class="btn alt" id="levels">Levels</button>
-          <button class="btn alt" id="daily">Daily challenge</button>
-          <button class="btn alt" id="menu-settings">Settings</button>
-          <!-- Ball skins are temporarily disabled.
-          <button class="btn alt" id="open-skins">Ball skins</button> -->
-          <button class="btn alt hid" id="inst">Install app</button>
-        </div>
+      <div class="dashboard">
+        <header class="lobby-header">
+          <div class="lobby-brand">
+            <span class="brand-ball" aria-hidden="true">●</span>
+            <div><strong>Bounce Reborn</strong><small>SOLO ADVENTURE</small></div>
+          </div>
+          <div class="player-card">
+            <span class="player-avatar" aria-hidden="true">●</span>
+            <span><strong>Player</strong><small id="dashboard-level">Level 1</small></span>
+            <span class="player-progress"><i id="dashboard-progress"></i></span>
+          </div>
+          <div class="lobby-actions">
+            <div class="dashboard-balance" id="dashboard-balance">◯ 0 BC</div>
+            <button class="lobby-icon" id="shop" aria-label="Open shop">Shop</button>
+            <button class="lobby-icon" id="menu-settings" aria-label="Open settings">⚙</button>
+          </div>
+        </header>
+        <main class="lobby-main">
+          <section class="adventure-card">
+            <div class="adventure-copy">
+              <span class="eyebrow">YOUR NEXT ADVENTURE</span>
+              <h1>Ready to roll?</h1>
+              <p>Explore 30 worlds, collect rings, and reach the portal.</p>
+              <div class="adventure-actions">
+                <button class="btn" id="play">Continue</button>
+                <button class="btn alt" id="levels">Choose a world</button>
+              </div>
+              <button class="install-link hid" id="inst">Install app</button>
+            </div>
+            <div class="adventure-art" aria-hidden="true">
+              <span class="art-orbit orbit-one"></span>
+              <span class="art-orbit orbit-two"></span>
+              <span class="art-ring">◯</span>
+              <span class="art-ball">●</span>
+              <span class="art-portal">◎</span>
+            </div>
+            <div class="world-tag"><span>CONTINUE IN</span><strong id="dashboard-world">Sunny Meadow</strong></div>
+          </section>
+          <aside class="lobby-side">
+            <button class="mode-card daily-card" id="daily">
+              <span class="mode-icon">✦</span>
+              <span><small>NEW CHALLENGE</small><strong>Daily Challenge</strong><em>Complete it to earn a Gift Box</em></span>
+              <b aria-hidden="true">›</b>
+            </button>
+            <div class="mode-card events-card">
+              <span class="mode-icon">★</span>
+              <span><small>COMING SOON</small><strong>Weekly Events</strong><em>More solo adventures are on the way</em></span>
+            </div>
+            <section class="gift-area">
+              <div class="section-heading"><span><small>YOUR REWARDS</small><strong>Gift Boxes</strong></span><span class="slot-count">3 SLOTS</span></div>
+              <div class="gift-slots" id="dashboard-gift-slots"></div>
+            </section>
+          </aside>
+        </main>
       </div>
     </div>
     <div class="modal hid" id="lvm">
-      <div class="panel">
+      <div class="panel level-panel">
         <h2>Choose a level</h2>
         <div id="lvs"></div>
+        <section class="level-objectives" aria-live="polite">
+          <p id="level-prompt">Choose an unlocked world to see its 3-star objectives.</p>
+          <div class="hid" id="level-details">
+            <h3 id="level-objective-title"></h3>
+            <ul class="objective-list">
+              <li><span>★</span><span><strong>Clear the world</strong><small>Collect every ring and reach the portal.</small></span></li>
+              <li><span>★</span><span><strong>Keep all your lives</strong><small>Reach the portal without dying.</small></span></li>
+              <li><span>★</span><span><strong>Beat the time target</strong><small>Finish in under <b id="level-par-time"></b>.</small></span></li>
+            </ul>
+            <p class="objective-note">The world must be cleared to earn stars. Each extra objective earns one more star.</p>
+            <button class="btn" id="start-level">Start world</button>
+          </div>
+        </section>
         <button class="btn alt" id="back">Back</button>
       </div>
     </div>
-    <!-- Ball skins are temporarily disabled.
-    <div class="modal hid" id="skinm">
-      <div class="panel">
-        <h2>Ball skins</h2>
-        <p id="star-total"></p>
-        <div class="skin-list" id="skins"></div>
-        <button class="btn alt" id="skin-back">Back</button>
+    <div class="modal hid" id="shopm">
+      <div class="panel shop-panel">
+        <div class="shop-header">
+          <h2>Shop</h2>
+          <strong class="currency-balance" id="shop-balance">◯ 0 BC</strong>
+        </div>
+        <div class="shop-tabs" id="shop-tabs">
+          <button class="shop-tab active" data-category="ball">Ball Skins</button>
+          <button class="shop-tab" data-category="power">Power-ups</button>
+          <button class="shop-tab" data-category="trail">Trail Effects</button>
+          <button class="shop-tab" data-category="bounce">Bounce Effects</button>
+          <button class="shop-tab" data-category="portal">Portal Effects</button>
+        </div>
+        <div class="shop-grid" id="shop-grid"></div>
+        <p class="shop-message" id="shop-message" aria-live="polite"></p>
+        <button class="btn alt" id="shop-back">Back</button>
       </div>
     </div>
-    -->
     <div class="modal hid" id="psm">
       <div class="panel">
         <h2>Paused</h2>
@@ -144,9 +208,17 @@
         <h2 id="wt">Level clear!</h2>
         <div class="stars" id="st"></div>
         <p id="ws"></p>
+        <div class="daily-gift-result hid" id="daily-gift-result" role="status" aria-live="polite">
+          <span class="daily-gift-icon" aria-hidden="true">🎁</span>
+          <div>
+            <strong id="daily-gift-title">Gift Box earned!</strong>
+            <p id="daily-gift-copy"></p>
+          </div>
+        </div>
         <div class="row">
           <button class="btn" id="nx">Next level</button
           ><button class="btn alt" id="rp">Replay</button>
+          <button class="btn" id="daily-continue">Continue</button>
         </div>
       </div>
     </div>
